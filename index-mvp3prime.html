@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NCS Wiki — Song · MVP-3'</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0e14;
+      --panel: #121721;
+      --panel-2: #181e29;
+      --text: #eef2f7;
+      --muted: #98a2b3;
+      --line: #293142;
+      --accent: #7dd3fc;
+      --accent-2: #a78bfa;
+      --danger: #fb7185;
+      --shadow: 0 18px 60px rgba(0, 0, 0, .28);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(125, 211, 252, .12), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(167, 139, 250, .11), transparent 55%),
+        var(--bg);
+    }
+
+    a { color: inherit; }
+    .wrap { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 60px; }
+
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .brand { font-weight: 800; letter-spacing: .02em; }
+    .status { font-size: 12px; color: var(--muted); }
+
+    .hero {
+      background: linear-gradient(145deg, rgba(18, 23, 33, .97), rgba(24, 30, 41, .93));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 30px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 260px;
+      height: 260px;
+      right: -100px;
+      top: -100px;
+      border-radius: 50%;
+      background: rgba(125, 211, 252, .08);
+      pointer-events: none;
+    }
+
+    .eyebrow { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+    h1 { font-size: clamp(30px, 5vw, 54px); line-height: 1.05; margin: 0; letter-spacing: -.04em; }
+    .subtitle { margin-top: 12px; color: #c7ced9; font-size: 16px; }
+
+    .hero-grid {
+      margin-top: 30px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      background: rgba(255, 255, 255, .03);
+      border: 1px solid rgba(255, 255, 255, .07);
+      border-radius: 16px;
+      padding: 18px;
+    }
+    .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .value { font-size: 24px; font-weight: 750; margin-top: 4px; }
+    .value.small { font-size: 17px; }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 11px; border-radius: 999px;
+      background: rgba(125, 211, 252, .09);
+      border: 1px solid rgba(125, 211, 252, .2);
+      color: #dff7ff; font-size: 13px;
+    }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      text-decoration: none; border-radius: 12px; padding: 11px 15px;
+      border: 1px solid var(--line); background: var(--panel-2); font-weight: 700;
+    }
+    .btn:hover { border-color: #465168; }
+    .btn.primary { background: #e8f7ff; color: #081018; border-color: transparent; }
+
+    .section { margin-top: 22px; }
+    .section-card {
+      background: rgba(18, 23, 33, .85);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .section h2 { margin: 0 0 14px; font-size: 20px; }
+
+    .meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .meta-item { padding: 14px; background: rgba(255,255,255,.025); border-radius: 14px; }
+    .meta-item .label { font-size: 11px; }
+    .meta-item .value { font-size: 16px; margin-top: 4px; word-break: break-word; }
+
+    .source { margin-top: 26px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    code { color: #dbeafe; word-break: break-all; }
+
+    .loading, .error {
+      text-align: center; padding: 70px 20px; color: var(--muted);
+    }
+    .error { color: #fecdd3; }
+    .error strong { display:block; color: #ffe4e6; font-size: 18px; margin-bottom: 8px; }
+
+
+    .chart-wrap { position: relative; }
+    .chart-box {
+      position: relative;
+      width: 100%;
+      min-height: 320px;
+      background: rgba(255,255,255,.02);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .chart-svg { display: block; width: 100%; height: 360px; }
+    .chart-tooltip {
+      position: absolute;
+      pointer-events: none;
+      min-width: 150px;
+      padding: 10px 12px;
+      background: rgba(8, 12, 18, .96);
+      border: 1px solid #344054;
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.35);
+      font-size: 12px;
+      line-height: 1.5;
+      transform: translate(-50%, calc(-100% - 10px));
+      z-index: 5;
+    }
+    .chart-tooltip strong { display:block; font-size:13px; color:#f8fafc; }
+    .chart-empty { min-height: 320px; display:grid; place-items:center; color:var(--muted); padding:30px; text-align:center; }
+    .chart-legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; color:var(--muted); font-size:12px; }
+    .legend-dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:6px; background:var(--accent); }
+    .stats-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+    .mini-stat { padding:14px; background:rgba(255,255,255,.025); border-radius:14px; border:1px solid rgba(255,255,255,.05); }
+    .mini-stat .num { font-size:20px; font-weight:750; margin-top:3px; }
+    .mini-stat .hint { font-size:11px; color:var(--muted); margin-top:4px; }
+    .history-table { width:100%; border-collapse:collapse; margin-top:16px; font-size:13px; }
+    .history-table th, .history-table td { padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; }
+    .history-table th { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+    .delta-up { color:#86efac; }
+    .delta-down { color:#fda4af; }
+    .delta-none { color:var(--muted); }
+    .note { margin-top:12px; padding:11px 12px; border-radius:12px; background:rgba(125,211,252,.05); border:1px solid rgba(125,211,252,.12); color:#bfd7e4; font-size:12px; line-height:1.6; }
+    @media (max-width: 720px) {
+      .stats-grid { grid-template-columns:1fr; }
+      .chart-svg { height: 300px; }
+      .history-table { font-size:12px; }
+      .history-table th:nth-child(3), .history-table td:nth-child(3) { display:none; }
+    }
+
+
+    .hero-main {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 26px;
+      align-items: center;
+    }
+    .thumb-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #0f141c;
+      border: 1px solid rgba(255,255,255,.09);
+      box-shadow: 0 14px 36px rgba(0,0,0,.28);
+    }
+    .thumb-wrap::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.08), transparent 45%);
+      pointer-events: none;
+    }
+    .thumb {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .thumb-fallback { display:grid; place-items:center; height:100%; color:var(--muted); font-size:12px; padding:12px; text-align:center; }
+    .hero-copy { min-width: 0; }
+
+    .congrats {
+      margin-top: 22px;
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(134,239,172,.22);
+      background: linear-gradient(135deg, rgba(34,197,94,.10), rgba(125,211,252,.06));
+      box-shadow: 0 12px 30px rgba(0,0,0,.12);
+    }
+    .congrats-title { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+    .congrats-sub { margin-top: 5px; color:#b7c9bd; font-size: 12px; line-height:1.6; }
+    .milestones-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    .milestone-card {
+      padding:14px; border-radius:14px; background:rgba(255,255,255,.025);
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .milestone-card.achieved { border-color:rgba(134,239,172,.2); background:rgba(34,197,94,.06); }
+    .milestone-card .m-value { font-size:19px; font-weight:800; }
+    .milestone-card .m-status { margin-top:4px; font-size:11px; color:var(--muted); line-height:1.5; }
+    @media (max-width: 720px) {
+      .hero-main { grid-template-columns: 1fr; }
+      .thumb-wrap { max-width: 520px; margin: 0 auto; }
+      .milestones-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+
+    .hidden { display: none; }
+
+    .search-panel {
+      margin-bottom: 22px;
+      background: rgba(18, 23, 33, .85);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .search-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+    .search-input {
+      width: 100%;
+      min-width: 0;
+      padding: 13px 15px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #0f141c;
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
+    .search-input:focus {
+      border-color: rgba(125,211,252,.55);
+      box-shadow: 0 0 0 3px rgba(125,211,252,.08);
+    }
+    .search-results {
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+      max-height: 340px;
+      overflow: auto;
+    }
+    .search-result {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 12px;
+      background: rgba(255,255,255,.025);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+    }
+    .search-result:hover {
+      border-color: rgba(125,211,252,.25);
+      background: rgba(125,211,252,.045);
+    }
+    .search-result-thumb {
+      width: 56px;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #0f141c;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .search-result-main { min-width: 0; }
+    .search-result-title {
+      font-weight: 750;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .search-result-sub {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .search-result-rank {
+      text-align: right;
+      white-space: nowrap;
+      color: #cfeeff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .search-empty {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 8px 2px 2px;
+    }
+    .ranking-note {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .ranking-highlight {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .rank-card {
+      position: relative;
+      overflow: hidden;
+      padding: 17px 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(145deg, rgba(125,211,252,.09), rgba(167,139,250,.07));
+    }
+    .rank-card.personal {
+      background: linear-gradient(145deg, rgba(167,139,250,.11), rgba(255,255,255,.025));
+    }
+    .rank-card .label { font-size: 11px; }
+    .rank-card .rank-number {
+      margin-top: 3px;
+      font-size: 34px;
+      line-height: 1;
+      font-weight: 850;
+      letter-spacing: -.045em;
+    }
+    .rank-card .rank-caption {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .rank-card .rank-icon {
+      position: absolute;
+      right: 14px;
+      top: 10px;
+      font-size: 24px;
+      opacity: .72;
+    }
+    @media (max-width: 720px) {
+      .search-row { grid-template-columns: 1fr; }
+      .ranking-highlight { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .wrap { width: min(100% - 20px, 1100px); padding-top: 18px; }
+      .hero { padding: 22px; border-radius: 16px; }
+      .hero-grid, .meta-grid { grid-template-columns: 1fr; }
+      .section-card { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="topbar">
+      <div class="brand">NCS WIKI</div>
+      <div class="status" id="status">Loading from Firebase…</div>
+    </div>
+
+    <section class="search-panel">
+      <div class="eyebrow">Find a song</div>
+      <div class="search-row">
+        <input id="songSearch" class="search-input" type="search" placeholder="曲名・アーティストで検索…" autocomplete="off" />
+        <button id="clearSearch" class="btn" type="button">Clear</button>
+      </div>
+      <div class="search-results hidden" id="searchResults"></div>
+      <div class="ranking-note" id="searchNote">Firebaseから全曲の現在データを読み込んで検索できます。</div>
+    </section>
+
+    <div id="loading" class="section-card loading">Loading song data…</div>
+    <div id="error" class="section-card error hidden"></div>
+
+    <div id="content" class="hidden">
+      <section class="hero">
+        <div class="hero-main">
+          <div class="thumb-wrap" id="thumbWrap">
+            <div class="thumb-fallback">YouTube thumbnail</div>
+          </div>
+          <div class="hero-copy">
+            <div class="eyebrow">Song Wiki</div>
+            <h1 id="title">—</h1>
+            <div class="subtitle" id="artist">—</div>
+          </div>
+        </div>
+
+        <div id="congrats" class="congrats hidden"></div>
+
+        <div class="hero-grid">
+          <div class="stat">
+            <div class="label">Plays</div>
+            <div class="value" id="playCount">—</div>
+          </div>
+          <div class="stat">
+            <div class="label">Total Listening Time</div>
+            <div class="value" id="watchTime">—</div>
+          </div>
+        </div>
+
+        <div class="ranking-highlight">
+          <div class="rank-card">
+            <div class="rank-icon">▶</div>
+            <div class="label">Overall Play Rank</div>
+            <div class="rank-number" id="playRank">—</div>
+            <div class="rank-caption" id="playRankCaption">—</div>
+          </div>
+          <div class="rank-card personal">
+            <div class="rank-icon">★</div>
+            <div class="label">好き度ランキング</div>
+            <div class="rank-number" id="personalRank">—</div>
+            <div class="rank-caption">ORDER + 1</div>
+          </div>
+        </div>
+
+        <div class="tags" style="margin-top:16px">
+          <span class="tag" id="genreTag">Genre: —</span>
+        </div>
+
+        <div class="tags" id="moods"></div>
+
+        <div class="actions">
+          <a class="btn primary" id="youtubeLink" href="#" target="_blank" rel="noopener">▶ Open on YouTube</a>
+          <a class="btn" id="firebaseLink" href="#" target="_blank" rel="noopener">View Firebase data</a>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-card">
+          <h2>Play Count History</h2>
+          <div class="stats-grid">
+            <div class="mini-stat"><div class="label">Observations</div><div class="num" id="observationCount">—</div><div class="hint" id="observationRange">—</div></div>
+            <div class="mini-stat"><div class="label">Largest Daily Increase</div><div class="num" id="maxDailyIncrease">—</div><div class="hint" id="maxDailyIncreaseDate">—</div></div>
+            <div class="mini-stat"><div class="label">Latest Snapshot</div><div class="num" id="latestSnapshot">—</div><div class="hint" id="latestSnapshotDate">—</div></div>
+          </div>
+          <div class="chart-box" id="chartBox">
+            <div class="chart-empty" id="chartEmpty">Loading daily history…</div>
+          </div>
+          <div class="chart-legend"><span><span class="legend-dot"></span>Observed cumulative plays</span><span>Missing dates are shown as gaps, not zero</span></div>
+          <div class="note" id="historyNote">The graph uses only the snapshots actually stored under <code>music_chart/daily_history</code>.</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-card">
+          <h2>Milestones</h2>
+          <div class="milestones-grid" id="milestonesGrid"></div>
+          <div class="note">Milestone dates are based on stored daily snapshots. When a threshold falls between two observations, the page reports the interval rather than inventing an exact time.</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-card">
+          <h2>Recent History</h2>
+          <div id="historyTableWrap">Loading…</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-card">
+          <h2>Basic Information</h2>
+          <div class="meta-grid">
+            <div class="meta-item"><div class="label">Year</div><div class="value" id="year">—</div></div>
+            <div class="meta-item"><div class="label">Generation</div><div class="value" id="generation">—</div></div>
+            <div class="meta-item"><div class="label">Duration</div><div class="value" id="duration">—</div></div>
+            <div class="meta-item"><div class="label">Song ID</div><div class="value" id="songId">—</div></div>
+            <div class="meta-item"><div class="label">YouTube ID</div><div class="value" id="youtubeId">—</div></div>
+            <div class="meta-item"><div class="label">好き度順位 (ORDER + 1)</div><div class="value" id="order">—</div></div>
+          </div>
+          <div class="source">Song source: <code id="sourcePath"></code><br>History source: <code>music_chart/daily_history</code></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const FIREBASE_BASE = "https://ncs-music-e2d05-default-rtdb.firebaseio.com";
+    const DEFAULT_SONG_ID = "1785407081629";
+
+    let allSongs = {};
+    let playRankMap = {};
+
+
+    const $ = (id) => document.getElementById(id);
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>'"]/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[ch]));
+    }
+
+    function formatNumber(value) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n.toLocaleString("en-US") : "—";
+    }
+
+    function formatSeconds(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return "—";
+      const total = Math.max(0, Math.round(n));
+      const h = Math.floor(total / 3600);
+      const m = Math.floor((total % 3600) / 60);
+      const s = total % 60;
+      if (h > 0) return `${h}h ${m}m ${s}s`;
+      if (m > 0) return `${m}m ${s}s`;
+      return `${s}s`;
+    }
+
+    function formatDuration(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return "—";
+      const total = Math.max(0, Math.round(n));
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
+    function normalizeMoods(moods) {
+      if (Array.isArray(moods)) return moods.filter(Boolean).map(String);
+      if (moods && typeof moods === "object") {
+        return Object.entries(moods)
+          .filter(([, value]) => value !== false && value != null && value !== "")
+          .map(([key, value]) => value === true ? key : (typeof value === "string" && value !== key ? value : key));
+      }
+      if (typeof moods === "string" && moods.trim()) return [moods.trim()];
+      return [];
+    }
+
+    function splitArtistTitle(title) {
+      if (typeof title !== "string") return { artist: "", song: "" };
+      const index = title.indexOf(" - ");
+      if (index === -1) return { artist: "", song: title };
+      return { artist: title.slice(0, index), song: title.slice(index + 3) };
+    }
+
+
+    function calculatePlayRanks(songs) {
+      const entries = Object.entries(songs || {})
+        .map(([id, song]) => ({
+          id,
+          plays: Number(song?.playCount)
+        }))
+        .filter(row => Number.isFinite(row.plays))
+        .sort((a, b) => b.plays - a.plays || a.id.localeCompare(b.id));
+
+      // Competition ranking: 1, 2, 2, 4...
+      const ranks = {};
+      let previousPlays = null;
+      let currentRank = 0;
+      entries.forEach((row, index) => {
+        if (row.plays !== previousPlays) {
+          currentRank = index + 1;
+          previousPlays = row.plays;
+        }
+        ranks[row.id] = { rank: currentRank, total: entries.length, plays: row.plays };
+      });
+      return ranks;
+    }
+
+    function renderSearchResults(query) {
+      const results = $("searchResults");
+      results.replaceChildren();
+
+      const q = String(query || "").trim().toLowerCase();
+      if (!q) {
+        results.classList.add("hidden");
+        $("searchNote").textContent = `全${formatNumber(Object.keys(allSongs).length)}曲から検索できます。`;
+        return;
+      }
+
+      const matches = Object.entries(allSongs)
+        .filter(([id, song]) => {
+          const title = String(song?.title || "").toLowerCase();
+          const artist = splitArtistTitle(song?.title || "").artist.toLowerCase();
+          const genre = String(song?.genre || "").toLowerCase();
+          return title.includes(q) || artist.includes(q) || genre.includes(q) || id.includes(q);
+        })
+        .map(([id, song]) => ({
+          id,
+          song,
+          rank: playRankMap[id]?.rank ?? null
+        }))
+        .sort((a, b) => {
+          const at = String(a.song?.title || "").toLowerCase();
+          const bt = String(b.song?.title || "").toLowerCase();
+          const ar = a.rank ?? Number.MAX_SAFE_INTEGER;
+          const br = b.rank ?? Number.MAX_SAFE_INTEGER;
+          return (ar - br) || at.localeCompare(bt);
+        })
+        .slice(0, 40);
+
+      results.classList.remove("hidden");
+      if (!matches.length) {
+        results.innerHTML = `<div class="search-empty">該当する曲が見つかりません。</div>`;
+        $("searchNote").textContent = "検索結果 0件";
+        return;
+      }
+
+      $("searchNote").textContent = `${formatNumber(matches.length)}件を表示（最大40件）。`;
+
+      for (const item of matches) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "search-result";
+
+        const img = document.createElement("img");
+        img.className = "search-result-thumb";
+        img.alt = "";
+        img.loading = "lazy";
+        img.src = item.song?.youtubeId
+          ? `https://img.youtube.com/vi/${encodeURIComponent(item.song.youtubeId)}/mqdefault.jpg`
+          : "";
+        img.addEventListener("error", () => {
+          img.style.visibility = "hidden";
+        });
+
+        const main = document.createElement("div");
+        main.className = "search-result-main";
+        const parsed = splitArtistTitle(item.song?.title || "");
+        main.innerHTML = `
+          <div class="search-result-title">${escapeHtml(parsed.song || item.song?.title || "Untitled")}</div>
+          <div class="search-result-sub">${escapeHtml(parsed.artist || "Unknown artist")} · ${escapeHtml(item.song?.genre || "Genre unknown")}</div>
+        `;
+
+        const rank = document.createElement("div");
+        rank.className = "search-result-rank";
+        rank.innerHTML = item.rank
+          ? `#${formatNumber(item.rank)}<br><span style="color:var(--muted);font-weight:500">${formatNumber(item.song?.playCount)} plays</span>`
+          : "—";
+
+        button.append(img, main, rank);
+        button.addEventListener("click", () => {
+          const url = new URL(location.href);
+          url.searchParams.set("id", item.id);
+          history.pushState({}, "", url);
+          $("songSearch").value = "";
+          renderSearchResults("");
+          loadSong(item.id);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        results.appendChild(button);
+      }
+    }
+
+    async function loadAllSongs() {
+      allSongs = await fetchJson("music_chart/songs");
+      if (!allSongs || typeof allSongs !== "object") allSongs = {};
+      playRankMap = calculatePlayRanks(allSongs);
+      $("searchNote").textContent = `全${formatNumber(Object.keys(allSongs).length)}曲から検索できます。`;
+    }
+
+    function showError(message) {
+      $("loading").classList.add("hidden");
+      $("content").classList.add("hidden");
+      $("error").classList.remove("hidden");
+      $("error").innerHTML = `<strong>Could not load this song</strong>${message}`;
+      $("status").textContent = "Firebase read failed";
+    }
+
+    async function fetchJson(path) {
+      const url = `${FIREBASE_BASE}/${path}.json`;
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status} while reading ${path}`);
+      return response.json();
+    }
+
+    function extractSongHistory(allHistory, songId) {
+      if (!allHistory || typeof allHistory !== "object") return [];
+      const rows = [];
+      for (const [date, day] of Object.entries(allHistory)) {
+        if (!day || typeof day !== "object") continue;
+        const record = day?.songs?.[songId];
+        if (!record || typeof record !== "object") continue;
+        const plays = Number(record.playCount);
+        if (!Number.isFinite(plays)) continue;
+        rows.push({
+          date,
+          plays,
+          totalWatchTime: Number(record.totalWatchTime),
+          timestamp: Number(day.timestamp)
+        });
+      }
+      rows.sort((a, b) => a.date.localeCompare(b.date));
+      return rows;
+    }
+
+    function formatDate(dateString) {
+      const d = new Date(`${dateString}T00:00:00`);
+      if (Number.isNaN(d.getTime())) return dateString;
+      return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function daysBetween(a, b) {
+      const da = new Date(`${a}T00:00:00Z`);
+      const db = new Date(`${b}T00:00:00Z`);
+      return Math.round((db - da) / 86400000);
+    }
+
+    function renderHistorySummary(rows) {
+      if (!rows.length) {
+        $("observationCount").textContent = "0";
+        $("observationRange").textContent = "No stored snapshots";
+        $("maxDailyIncrease").textContent = "—";
+        $("maxDailyIncreaseDate").textContent = "—";
+        $("latestSnapshot").textContent = "—";
+        $("latestSnapshotDate").textContent = "—";
+        return;
+      }
+
+      let maxIncrease = null;
+      for (let i = 1; i < rows.length; i++) {
+        const gapDays = daysBetween(rows[i - 1].date, rows[i].date);
+        if (gapDays !== 1) continue;
+        const delta = rows[i].plays - rows[i - 1].plays;
+        if (!maxIncrease || delta > maxIncrease.delta) {
+          maxIncrease = { delta, date: rows[i].date };
+        }
+      }
+
+      $("observationCount").textContent = formatNumber(rows.length);
+      $("observationRange").textContent = `${formatDate(rows[0].date)} → ${formatDate(rows[rows.length - 1].date)}`;
+      $("maxDailyIncrease").textContent = maxIncrease ? `${maxIncrease.delta >= 0 ? '+' : ''}${formatNumber(maxIncrease.delta)}` : "—";
+      $("maxDailyIncreaseDate").textContent = maxIncrease ? formatDate(maxIncrease.date) : "Not enough consecutive daily data";
+      $("latestSnapshot").textContent = formatNumber(rows[rows.length - 1].plays);
+      $("latestSnapshotDate").textContent = formatDate(rows[rows.length - 1].date);
+    }
+
+    function renderRecentHistory(rows) {
+      const recent = rows.slice(-10).reverse();
+      if (!recent.length) {
+        $("historyTableWrap").textContent = "No history is available for this song.";
+        return;
+      }
+
+      const table = document.createElement("table");
+      table.className = "history-table";
+      table.innerHTML = `<thead><tr><th>Date</th><th>Play Count</th><th>Daily Change</th></tr></thead>`;
+      const tbody = document.createElement("tbody");
+
+      for (const row of recent) {
+        const originalIndex = rows.indexOf(row);
+        const prev = originalIndex > 0 ? rows[originalIndex - 1] : null;
+        const consecutive = prev && daysBetween(prev.date, row.date) === 1;
+        let deltaText = "—";
+        let deltaClass = "delta-none";
+        if (consecutive) {
+          const delta = row.plays - prev.plays;
+          deltaText = `${delta >= 0 ? '+' : ''}${formatNumber(delta)}`;
+          deltaClass = delta > 0 ? "delta-up" : delta < 0 ? "delta-down" : "delta-none";
+        }
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${escapeHtml(formatDate(row.date))}</td><td>${escapeHtml(formatNumber(row.plays))}</td><td class="${deltaClass}">${escapeHtml(deltaText)}</td>`;
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      const wrap = $("historyTableWrap");
+      wrap.replaceChildren(table);
+    }
+
+    function renderChart(rows) {
+      const box = $("chartBox");
+      box.replaceChildren();
+      if (!rows.length) {
+        box.innerHTML = '<div class="chart-empty">No daily history was found for this song.</div>';
+        return;
+      }
+
+      const width = 1000;
+      const height = 360;
+      const pad = { left: 58, right: 20, top: 24, bottom: 42 };
+      const innerW = width - pad.left - pad.right;
+      const innerH = height - pad.top - pad.bottom;
+      const minY = Math.min(...rows.map(r => r.plays));
+      const maxY = Math.max(...rows.map(r => r.plays));
+      const ySpan = Math.max(1, maxY - minY);
+
+      const xFor = i => rows.length === 1 ? pad.left + innerW / 2 : pad.left + (i / (rows.length - 1)) * innerW;
+      const yFor = v => pad.top + (1 - ((v - minY) / ySpan)) * innerH;
+
+      const svgNS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.setAttribute("class", "chart-svg");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", "Cumulative play count over time");
+
+      const addLine = (x1, y1, x2, y2, stroke, opacity="1", dash="") => {
+        const el = document.createElementNS(svgNS, "line");
+        el.setAttribute("x1", x1); el.setAttribute("y1", y1); el.setAttribute("x2", x2); el.setAttribute("y2", y2);
+        el.setAttribute("stroke", stroke); el.setAttribute("stroke-opacity", opacity);
+        if (dash) el.setAttribute("stroke-dasharray", dash);
+        el.setAttribute("stroke-width", "1");
+        svg.appendChild(el);
+      };
+
+      const addText = (x, y, text, anchor="start") => {
+        const el = document.createElementNS(svgNS, "text");
+        el.setAttribute("x", x); el.setAttribute("y", y); el.setAttribute("fill", "#98a2b3");
+        el.setAttribute("font-size", "11"); el.setAttribute("text-anchor", anchor); el.textContent = text;
+        svg.appendChild(el);
+      };
+
+      const tickCount = 5;
+      for (let i = 0; i <= tickCount; i++) {
+        const value = minY + (ySpan * i / tickCount);
+        const y = yFor(value);
+        addLine(pad.left, y, width - pad.right, y, "#334155", "0.5");
+        addText(pad.left - 8, y + 4, formatNumber(Math.round(value)), "end");
+      }
+
+      // Segmented lines: do not connect across missing dates.
+      for (let i = 1; i < rows.length; i++) {
+        if (daysBetween(rows[i - 1].date, rows[i].date) !== 1) continue;
+        addLine(xFor(i - 1), yFor(rows[i - 1].plays), xFor(i), yFor(rows[i].plays), "#7dd3fc", "0.95");
+      }
+
+      rows.forEach((row, i) => {
+        const c = document.createElementNS(svgNS, "circle");
+        c.setAttribute("cx", xFor(i)); c.setAttribute("cy", yFor(row.plays)); c.setAttribute("r", rows.length > 60 ? "3" : "4.5");
+        c.setAttribute("fill", "#7dd3fc");
+        c.style.cursor = "pointer";
+        c.addEventListener("mouseenter", () => showTooltip(i));
+        c.addEventListener("mouseleave", hideTooltip);
+        svg.appendChild(c);
+      });
+
+      const labelIndexes = rows.length <= 8
+        ? rows.map((_, i) => i)
+        : [0, Math.floor((rows.length - 1) / 2), rows.length - 1];
+      const uniqueIndexes = [...new Set(labelIndexes)];
+      for (const i of uniqueIndexes) {
+        addText(xFor(i), height - 14, formatDate(rows[i].date), i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle");
+      }
+
+      box.appendChild(svg);
+
+      const tooltip = document.createElement("div");
+      tooltip.className = "chart-tooltip hidden";
+      tooltip.id = "chartTooltip";
+      box.appendChild(tooltip);
+
+      function showTooltip(i) {
+        const row = rows[i];
+        tooltip.innerHTML = `<strong>${escapeHtml(formatNumber(row.plays))} plays</strong>${escapeHtml(formatDate(row.date))}`;
+        tooltip.style.left = `${(xFor(i) / width) * 100}%`;
+        tooltip.style.top = `${(yFor(row.plays) / height) * 100}%`;
+        tooltip.classList.remove("hidden");
+      }
+      function hideTooltip() { tooltip.classList.add("hidden"); }
+    }
+
+
+    const MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
+
+    function getMilestoneState(milestone, currentPlays, rows) {
+      const achievedNow = Number.isFinite(currentPlays) && currentPlays >= milestone;
+      let observed = null;
+      let previous = null;
+
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].plays >= milestone) {
+          observed = rows[i];
+          previous = i > 0 ? rows[i - 1] : null;
+          break;
+        }
+      }
+
+      if (observed) {
+        if (previous && previous.plays < milestone && daysBetween(previous.date, observed.date) === 1) {
+          return { achieved: true, label: formatDate(observed.date), detail: `Observed crossing on ${formatDate(observed.date)}` };
+        }
+        if (previous && previous.plays < milestone) {
+          return { achieved: true, label: `${formatDate(previous.date)}–${formatDate(observed.date)}`, detail: 'Exact date unknown from daily snapshots' };
+        }
+        return { achieved: true, label: formatDate(observed.date), detail: 'First stored snapshot at or above milestone' };
+      }
+
+      if (achievedNow) {
+        return { achieved: true, label: 'Reached live', detail: 'Live value is at/above this milestone; daily snapshot has not caught up yet' };
+      }
+
+      return { achieved: false, label: 'Not yet', detail: '' };
+    }
+
+    function renderMilestones(song, rows) {
+      const current = Number(song.playCount);
+      const grid = $("milestonesGrid");
+      grid.replaceChildren();
+      for (const milestone of MILESTONES) {
+        const state = getMilestoneState(milestone, current, rows);
+        const card = document.createElement('div');
+        card.className = `milestone-card${state.achieved ? ' achieved' : ''}`;
+        card.innerHTML = `\n          <div class="m-value">${escapeHtml(formatNumber(milestone))}</div>\n          <div class="m-status">${escapeHtml(state.label)}${state.achieved && state.detail ? `<br>${escapeHtml(state.detail)}` : ''}</div>`;
+        grid.appendChild(card);
+      }
+    }
+
+    function renderCongrats(song, rows) {
+      const current = Number(song.playCount);
+      const candidates = MILESTONES.filter(n => Number.isFinite(current) && current >= n);
+      const box = $("congrats");
+      box.classList.add('hidden');
+      box.replaceChildren();
+      if (!candidates.length) return;
+
+      const reached = candidates[candidates.length - 1];
+      const latestRow = rows.length ? rows[rows.length - 1] : null;
+      const exactObserved = rows.some(r => r.plays >= reached);
+      const isLiveAhead = latestRow && current > latestRow.plays && current >= reached && !exactObserved;
+
+      const title = document.createElement('div');
+      title.className = 'congrats-title';
+      title.textContent = `🎉 Congrats!! ${song.title || 'This song'} reached ${formatNumber(reached)} plays!!!`;
+      box.appendChild(title);
+
+      const sub = document.createElement('div');
+      sub.className = 'congrats-sub';
+      if (isLiveAhead) {
+        sub.textContent = `The live Firebase value has reached ${formatNumber(current)} plays. The daily snapshot has not recorded this milestone yet.`;
+      } else {
+        const state = getMilestoneState(reached, current, rows);
+        sub.textContent = state.detail || 'This milestone is recorded in the available history.';
+      }
+      box.appendChild(sub);
+      box.classList.remove('hidden');
+    }
+
+    function renderThumbnail(song) {
+      const wrap = $('thumbWrap');
+      wrap.replaceChildren();
+      const id = song.youtubeId;
+      if (!id) {
+        const fallback = document.createElement('div');
+        fallback.className = 'thumb-fallback';
+        fallback.textContent = 'No YouTube thumbnail available';
+        wrap.appendChild(fallback);
+        return;
+      }
+      const img = document.createElement('img');
+      img.className = 'thumb';
+      img.alt = `${song.title || 'Song'} thumbnail`;
+      img.loading = 'eager';
+      img.src = `https://img.youtube.com/vi/${encodeURIComponent(id)}/maxresdefault.jpg`;
+      img.addEventListener('error', () => {
+        if (img.dataset.fallback === '1') {
+          wrap.replaceChildren();
+          const fallback = document.createElement('div');
+          fallback.className = 'thumb-fallback';
+          fallback.textContent = 'Thumbnail unavailable';
+          wrap.appendChild(fallback);
+          return;
+        }
+        img.dataset.fallback = '1';
+        img.src = `https://img.youtube.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
+      });
+      wrap.appendChild(img);
+    }
+
+    function renderSong(song, songId, sourceUrl, historyRows) {
+      const parsed = splitArtistTitle(song.title);
+      const moods = normalizeMoods(song.moods);
+
+      $("title").textContent = parsed.song || song.title || "Untitled";
+      $("artist").textContent = parsed.artist || "Unknown artist";
+      renderThumbnail(song);
+      renderCongrats(song, historyRows);
+      $("playCount").textContent = formatNumber(song.playCount);
+      $("watchTime").textContent = formatSeconds(song.totalWatchTime);
+
+      const playRank = playRankMap[songId];
+      $("playRank").textContent = playRank ? `#${formatNumber(playRank.rank)}` : "—";
+      $("playRankCaption").textContent = playRank ? `out of ${formatNumber(playRank.total)} songs` : "Rank unavailable";
+
+      const personalOrder = Number(song.order);
+      const personalRank = Number.isFinite(personalOrder) ? personalOrder + 1 : null;
+      $("personalRank").textContent = personalRank ? `#${formatNumber(personalRank)}` : "—";
+      $("genreTag").textContent = `Genre: ${song.genre ?? "—"}`;
+
+      $("year").textContent = song.year ?? "—";
+      $("generation").textContent = song.generation ?? "—";
+      $("duration").textContent = formatDuration(song.duration);
+      $("songId").textContent = song.id ?? songId;
+      $("youtubeId").textContent = song.youtubeId ?? "—";
+      $("order").textContent = personalRank ? `#${formatNumber(personalRank)}` : "—";
+      $("sourcePath").textContent = `music_chart/songs/${songId}`;
+
+      const moodsEl = $("moods");
+      moodsEl.replaceChildren();
+      for (const mood of moods) {
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = mood;
+        moodsEl.appendChild(tag);
+      }
+
+      const yt = song.youtubeId ? `https://www.youtube.com/watch?v=${encodeURIComponent(song.youtubeId)}` : "#";
+      $("youtubeLink").href = yt;
+      if (!song.youtubeId) $("youtubeLink").style.display = "none";
+
+      $("firebaseLink").href = `${FIREBASE_BASE}/music_chart/songs/${encodeURIComponent(songId)}.json`;
+      renderHistorySummary(historyRows);
+      renderChart(historyRows);
+      renderRecentHistory(historyRows);
+      renderMilestones(song, historyRows);
+
+      if (historyRows.length) {
+        const latest = historyRows[historyRows.length - 1];
+        const current = Number(song.playCount);
+        if (Number.isFinite(current) && latest.plays !== current) {
+          $("historyNote").textContent = `The latest daily snapshot is ${formatNumber(latest.plays)} plays on ${formatDate(latest.date)}; the live song record is currently ${formatNumber(current)}. Daily history and live data can therefore differ until the next snapshot.`;
+        } else {
+          $("historyNote").textContent = `The graph uses ${historyRows.length} stored daily snapshots for this song. Missing dates are left as gaps rather than being treated as zero plays.`;
+        }
+      }
+
+      $("loading").classList.add("hidden");
+      $("error").classList.add("hidden");
+      $("content").classList.remove("hidden");
+      $("status").textContent = `Live song data + ${historyRows.length} history snapshots`;
+    }
+
+    async function loadSong(forcedSongId = null) {
+      const params = new URLSearchParams(location.search);
+      const songId = forcedSongId || params.get("id") || DEFAULT_SONG_ID;
+      try {
+        const [song, allHistory] = await Promise.all([
+          fetchJson(`music_chart/songs/${encodeURIComponent(songId)}`),
+          fetchJson("music_chart/daily_history")
+        ]);
+        if (!song || typeof song !== "object") throw new Error("No song data was returned.");
+        const historyRows = extractSongHistory(allHistory, songId);
+        renderSong(song, songId, `${FIREBASE_BASE}/music_chart/songs/${encodeURIComponent(songId)}.json`, historyRows);
+      } catch (error) {
+        showError(
+          `Firebase RTDBから楽曲データまたは日次履歴を取得できませんでした。<br>` +
+          `<small>${escapeHtml(error.message)}</small><br><br>` +
+          `Song: <code>music_chart/songs/${escapeHtml(songId)}</code><br>` +
+          `History: <code>music_chart/daily_history</code>`
+        );
+      }
+    }
+
+    $("songSearch").addEventListener("input", (event) => renderSearchResults(event.target.value));
+    $("clearSearch").addEventListener("click", () => {
+      $("songSearch").value = "";
+      renderSearchResults("");
+      $("songSearch").focus();
+    });
+
+    window.addEventListener("popstate", () => loadSong());
+
+    (async () => {
+      try {
+        await loadAllSongs();
+      } catch (error) {
+        $("searchNote").textContent = "曲検索データを読み込めませんでした。";
+      }
+      await loadSong();
+    })();
+  </script>
+</body>
+</html>
