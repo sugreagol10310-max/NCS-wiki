@@ -1,23 +1,368 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NCS Wiki – Dashboard</title>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NCS Wiki – Dashboard</title>
 <style>
-:root{color-scheme:dark;--bg:#090b10;--panel:#11151d;--panel2:#171c25;--text:#eef2f7;--muted:#9ba6b5;--line:#29313d;--accent:#7dd3fc;--accent2:#a78bfa;--danger:#fb7185;--radius:18px}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#080a0f,#0c1017);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:inherit}header{padding:28px 24px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(9,11,16,.92);backdrop-filter:blur(14px);z-index:10}.header-inner{max-width:1250px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}h1{font-size:28px;margin:0 0 5px}.sub{color:var(--muted);font-size:13px}button,select,input{font:inherit}button{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:9px 13px;border-radius:11px;cursor:pointer}button:hover{border-color:#536071}main{max-width:1250px;margin:0 auto;padding:24px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:18px}.metric-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.metric{font-size:30px;font-weight:800;margin-top:7px}section{margin-top:18px}.section-title{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:10px}h2{font-size:20px;margin:0}.hint{font-size:12px;color:var(--muted)}.rank-table{width:100%;border-collapse:collapse}.rank-table th,.rank-table td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left}.rank-table th{font-size:12px;color:var(--muted);font-weight:600}.rank-table td{font-size:14px}.rank{font-weight:800;width:55px}.plays{font-variant-numeric:tabular-nums;text-align:right!important}.pref{color:var(--accent2);font-weight:700}.song-link{text-decoration:none}.song-link:hover{text-decoration:underline}.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}.controls label{font-size:13px;color:var(--muted)}input[type=range]{width:min(600px,70vw)}.race-wrap{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#0b0e14;padding:12px}.race-stage{position:relative;height:620px;min-height:500px}.bar{position:absolute;left:0;height:34px;display:flex;align-items:center;transition:top .45s ease,width .45s ease,opacity .3s ease;gap:8px}.bar-rank{width:28px;text-align:right;color:var(--muted);font-size:12px}.bar-label{width:245px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.bar-track{height:24px;border-radius:7px;background:linear-gradient(90deg,var(--accent),var(--accent2));min-width:2px}.bar-value{width:85px;text-align:right;font-variant-numeric:tabular-nums;font-weight:750;font-size:13px}.race-status{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:8px}.error{color:var(--danger);background:#2a1118;border:1px solid #57202c;padding:12px;border-radius:12px;white-space:pre-wrap}.loading{color:var(--muted);padding:20px 0}@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bar-label{width:180px}}@media(max-width:600px){main{padding:14px}.grid{grid-template-columns:1fr 1fr}.metric{font-size:23px}.bar-label{width:120px}.bar-value{width:65px}.race-stage{height:520px}}
-</style></head><body>
-<header><div class="header-inner"><div><h1>🎵 NCS Wiki Dashboard</h1><div class="sub">NCS Player のデータを使った総合統計・ランキング</div></div><button id="reload">↻ 更新</button></div></header>
-<main><div id="message" class="loading">Firebaseからデータを読み込んでいます…</div><div id="app" style="display:none">
-<div class="grid"><div class="card"><div class="metric-label">登録曲数</div><div class="metric" id="songCount">—</div></div><div class="card"><div class="metric-label">総再生回数</div><div class="metric" id="totalPlays">—</div></div><div class="card"><div class="metric-label">総視聴時間</div><div class="metric" id="totalTime">—</div></div><div class="card"><div class="metric-label">記録日数</div><div class="metric" id="dayCount">—</div></div></div>
-<section><div class="section-title"><h2>🏆 現在の総合ランキング</h2><span class="hint">再生回数順 / 同数は同順位</span></div><div class="card"><table class="rank-table"><thead><tr><th>#</th><th>曲</th><th>好き度</th><th style="text-align:right">再生回数</th></tr></thead><tbody id="ranking"></tbody></table></div></section>
-<section><div class="section-title"><h2>📈 Play Count Bar Chart Race</h2><span class="hint">daily_history の実測スナップショットを使用</span></div><div class="card"><div class="controls"><button id="playRace">▶ 再生</button><button id="stopRace">■ 停止</button><label>日付</label><input id="dateSlider" type="range" min="0" max="0" value="0"><span id="dateLabel">—</span><label>表示曲数 <select id="topN"><option>10</option><option selected>15</option><option>20</option><option>30</option></select></label></div><div class="race-wrap"><div class="race-stage" id="raceStage"></div><div class="race-status"><span id="raceInfo">—</span><span>※データが存在する日だけ表示</span></div></div></div></section>
-<section><div class="section-title"><h2>⚡ 現在のTop 20</h2><span class="hint">再生回数の多い曲</span></div><div class="card" id="top20Chart"></div></section>
-</div></main>
+:root{
+  color-scheme:dark;
+  --bg:#090b10;--panel:#11151d;--panel2:#171c25;--text:#eef2f7;
+  --muted:#9ba6b5;--line:#29313d;--accent:#7dd3fc;--accent2:#a78bfa;
+  --good:#86efac;--warn:#fbbf24;--danger:#fb7185;--radius:18px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#080a0f,#0c1017);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:inherit}
+header{padding:28px 24px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(9,11,16,.92);backdrop-filter:blur(14px);z-index:10}
+.header-inner{max-width:1250px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+h1{font-size:28px;margin:0 0 5px}.sub{color:var(--muted);font-size:13px}
+button,select,input{font:inherit}
+button{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:9px 13px;border-radius:11px;cursor:pointer}
+button:hover{border-color:#536071}
+main{max-width:1250px;margin:0 auto;padding:24px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.metric-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.metric{font-size:30px;font-weight:800;margin-top:7px}
+section{margin-top:18px}
+.section-title{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:10px}
+h2{font-size:20px;margin:0}.hint{font-size:12px;color:var(--muted)}
+.rank-table{width:100%;border-collapse:collapse}.rank-table th,.rank-table td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left}
+.rank-table th{font-size:12px;color:var(--muted);font-weight:600}.rank-table td{font-size:14px}
+.rank{font-weight:800;width:55px}.plays{font-variant-numeric:tabular-nums;text-align:right!important}
+.pref{color:var(--accent2);font-weight:700}.song-link{text-decoration:none}.song-link:hover{text-decoration:underline}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.controls label{font-size:13px;color:var(--muted)}
+input[type=range]{width:min(600px,70vw)}
+.race-wrap{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#0b0e14;padding:14px}
+.race-stage{position:relative;height:650px;min-height:500px}
+.race-row{position:absolute;left:0;right:0;height:34px;display:grid;grid-template-columns:32px 255px minmax(80px,1fr) 82px;gap:9px;align-items:center;will-change:transform,opacity;transition:transform .55s cubic-bezier(.2,.75,.25,1),opacity .35s ease}
+.race-rank{text-align:right;color:var(--muted);font-size:12px}
+.race-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.race-track{height:24px;border-radius:7px;background:#202632;overflow:hidden;position:relative}
+.race-fill{height:100%;width:0;border-radius:7px;background:linear-gradient(90deg,var(--accent),var(--accent2));will-change:width;transition:width .55s cubic-bezier(.2,.75,.25,1)}
+.race-value{text-align:right;font-variant-numeric:tabular-nums;font-weight:750;font-size:13px}
+.race-date{position:absolute;right:12px;bottom:3px;font-size:34px;font-weight:850;color:#ffffff12;pointer-events:none}
+.race-status{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:8px}
+.race-note{margin-top:10px;color:var(--muted);font-size:11px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.small-table{width:100%;border-collapse:collapse}.small-table th,.small-table td{padding:9px 6px;border-bottom:1px solid var(--line);font-size:13px}
+.small-table th{color:var(--muted);font-weight:600;text-align:left}.small-table td:last-child,.small-table th:last-child{text-align:right}
+.gain{color:var(--good);font-weight:700}.empty{color:var(--muted);padding:12px 0}
+.champion-list{display:flex;flex-direction:column;gap:9px}
+.champion{display:grid;grid-template-columns:74px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#ffffff03}
+.champion-era{font-weight:800;color:var(--accent2)}.champion-title{font-weight:700}.champion-date{color:var(--muted);font-size:11px;text-align:right}
+.error{color:var(--danger);background:#2a1118;border:1px solid #57202c;padding:12px;border-radius:12px;white-space:pre-wrap}
+.loading{color:var(--muted);padding:20px 0}
+@media(max-width:900px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .two-col{grid-template-columns:1fr}
+  .race-row{grid-template-columns:28px 180px minmax(60px,1fr) 70px}
+}
+@media(max-width:600px){
+  main{padding:14px}.grid{grid-template-columns:1fr 1fr}.metric{font-size:23px}
+  .race-row{grid-template-columns:24px 105px minmax(50px,1fr) 60px;gap:6px}
+  .race-label{font-size:11px}.race-value{font-size:11px}.race-stage{height:520px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div><h1>🎵 NCS Wiki Dashboard</h1><div class="sub">NCS Player のデータを使った総合統計・ランキング</div></div>
+    <button id="reload">↻ 更新</button>
+  </div>
+</header>
+
+<main>
+<div id="message" class="loading">Firebaseからデータを読み込んでいます…</div>
+<div id="app" style="display:none">
+
+<div class="grid">
+  <div class="card"><div class="metric-label">登録曲数</div><div class="metric" id="songCount">—</div></div>
+  <div class="card"><div class="metric-label">総再生回数</div><div class="metric" id="totalPlays">—</div></div>
+  <div class="card"><div class="metric-label">総視聴時間</div><div class="metric" id="totalTime">—</div></div>
+  <div class="card"><div class="metric-label">記録日数</div><div class="metric" id="dayCount">—</div></div>
+</div>
+
+<section>
+  <div class="section-title"><h2>🏆 現在の総合ランキング</h2><span class="hint">再生回数順 / 同数は同順位</span></div>
+  <div class="card">
+    <table class="rank-table">
+      <thead><tr><th>#</th><th>曲</th><th>好き度</th><th style="text-align:right">再生回数</th></tr></thead>
+      <tbody id="ranking"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="section-title"><h2>📈 Play Count Bar Chart Race</h2><span class="hint">実測スナップショット間を滑らかに補間</span></div>
+  <div class="card">
+    <div class="controls">
+      <button id="playRace">▶ 再生</button><button id="stopRace">■ 停止</button>
+      <label>日付</label><input id="dateSlider" type="range" min="0" max="0" value="0" step="1">
+      <span id="dateLabel">—</span>
+      <label>表示曲数 <select id="topN"><option>10</option><option selected>15</option><option>20</option><option>30</option></select></label>
+      <label>速度 <select id="raceSpeed"><option value="1800">ゆっくり</option><option value="1100" selected>標準</option><option value="700">速い</option></select></label>
+    </div>
+    <div class="race-wrap">
+      <div class="race-stage" id="raceStage"><div class="race-date" id="raceDateWatermark"></div></div>
+      <div class="race-status"><span id="raceInfo">—</span><span>※データが存在する日だけ使用</span></div>
+      <div class="race-note">バーの位置・長さは見た目を滑らかにするため、隣接する実測スナップショット間を補間しています。元データ自体は変更していません。</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-title"><h2>⏱ 直近1週間のランキング</h2><span class="hint" id="weekRange">—</span></div>
+  <div class="two-col">
+    <div class="card"><h3>▶ 視聴回数の増加</h3><table class="small-table"><thead><tr><th>#</th><th>曲</th><th>増加</th></tr></thead><tbody id="weeklyPlays"></tbody></table></div>
+    <div class="card"><h3>⏱ 視聴時間の増加</h3><table class="small-table"><thead><tr><th>#</th><th>曲</th><th>増加</th></tr></thead><tbody id="weeklyTime"></tbody></table></div>
+  </div>
+</section>
+
+<section>
+  <div class="section-title"><h2>👑 歴代「好き度 #1」</h2><span class="hint">order = 0 の変遷から世代を作成</span></div>
+  <div class="card"><div id="champions" class="champion-list"></div></div>
+</section>
+
+<section>
+  <div class="section-title"><h2>⚡ 現在のTop 20</h2><span class="hint">再生回数の多い曲</span></div>
+  <div class="card" id="top20Chart"></div>
+</section>
+
+</div>
+</main>
+
 <script>
-const DB="https://ncs-music-e2d05-default-rtdb.firebaseio.com";let songs={},history={},dates=[],raceTimer=null,currentDateIndex=0;
-const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),num=n=>Number(n||0).toLocaleString("ja-JP"),formatTime=sec=>{sec=Number(sec||0);let h=Math.floor(sec/3600),m=Math.floor(sec%3600/60);return h?`${h.toLocaleString()}h ${m}m`:`${m}m`};
-async function get(path){let r=await fetch(DB+path+".json");if(!r.ok)throw Error(`Firebase HTTP ${r.status}: ${path}`);return await r.json()}
-function rankList(){return Object.values(songs).filter(Boolean).sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0)||Number(a.order||0)-Number(b.order||0))}function competitionRanks(list){let last=null,rank=0;return list.map((s,i)=>{let p=Number(s.playCount||0);if(p!==last)rank=i+1;last=p;return rank})}
-function renderOverview(){let list=rankList();$("songCount").textContent=num(list.length);$("totalPlays").textContent=num(list.reduce((a,s)=>a+Number(s.playCount||0),0));$("totalTime").textContent=formatTime(list.reduce((a,s)=>a+Number(s.totalWatchTime||0),0));$("dayCount").textContent=num(dates.length);let ranks=competitionRanks(list);$("ranking").innerHTML=list.slice(0,50).map((s,i)=>`<tr><td class="rank">#${ranks[i]}</td><td><a class="song-link" href="./index.html?id=${encodeURIComponent(s.id||"")}">${esc(s.title||"Unknown")}</a></td><td class="pref">#${Number(s.order||0)+1}</td><td class="plays">${num(s.playCount)}</td></tr>`).join("");let top=list.slice(0,20),max=Math.max(1,...top.map(s=>Number(s.playCount||0)));$("top20Chart").innerHTML=top.map((s,i)=>{let w=Math.max(2,Number(s.playCount||0)/max*100);return `<div style="display:grid;grid-template-columns:35px minmax(150px,260px) 1fr 75px;gap:8px;align-items:center;margin:8px 0"><b>#${i+1}</b><span title="${esc(s.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.title)}</span><div style="height:18px;background:#202632;border-radius:6px;overflow:hidden"><div style="height:100%;width:${w}%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:6px"></div></div><b style="text-align:right">${num(s.playCount)}</b></div>`}).join("")}
-function buildHistory(raw){let out={};if(!raw)return out;for(let [date,day] of Object.entries(raw)){if(!day||!day.songs)continue;out[date]={};for(let [id,s] of Object.entries(day.songs||{})){if(s&&Number.isFinite(Number(s.playCount)))out[date][id]=Number(s.playCount)}}return out}
-function renderRace(){let date=dates[currentDateIndex];if(!date)return;$("dateLabel").textContent=date;let values=history[date]||{},n=Number($("topN").value),rows=Object.entries(values).map(([id,plays])=>({id,plays,s:songs[id]})).filter(x=>x.s).sort((a,b)=>b.plays-a.plays).slice(0,n),max=Math.max(1,...rows.map(x=>x.plays)),stage=$("raceStage");stage.innerHTML="";rows.forEach((x,i)=>{let el=document.createElement("div");el.className="bar";el.style.top=i*36+"px";el.style.width=Math.max(70,Math.min(100,100*x.plays/max))+"%";el.innerHTML=`<span class="bar-rank">#${i+1}</span><span class="bar-label" title="${esc(x.s.title)}">${esc(x.s.title)}</span><span class="bar-track" style="width:${Math.max(2,Math.min(100,100*x.plays/max))}%"></span><span class="bar-value">${num(x.plays)}</span>`;stage.appendChild(el)});$("raceInfo").textContent=`${rows.length}曲 / ${date}`}
-function stopRace(){if(raceTimer){clearInterval(raceTimer);raceTimer=null}}function setupRace(){$("dateSlider").max=Math.max(0,dates.length-1);$("dateSlider").value=currentDateIndex;$("dateSlider").oninput=e=>{stopRace();currentDateIndex=Number(e.target.value);renderRace()};$("topN").onchange=renderRace;$("playRace").onclick=()=>{if(raceTimer||dates.length<2)return;raceTimer=setInterval(()=>{currentDateIndex++;if(currentDateIndex>=dates.length){stopRace();return}$("dateSlider").value=currentDateIndex;renderRace()},900)};$("stopRace").onclick=stopRace;renderRace()}
-async function load(){stopRace();$("message").className="loading";$("message").textContent="Firebaseからデータを読み込んでいます…";$("app").style.display="none";try{songs=await get("/music_chart/songs")||{};history=buildHistory(await get("/music_chart/daily_history"));dates=Object.keys(history).sort();currentDateIndex=Math.max(0,dates.length-1);renderOverview();setupRace();$("message").style.display="none";$("app").style.display=""}catch(e){$("message").className="error";$("message").textContent="データの読み込みに失敗しました。\n"+e.message}}$("reload").onclick=load;load();
-</script></body></html>
+const DB="https://ncs-music-e2d05-default-rtdb.firebaseio.com";
+let songs={},history={},dates=[],raceTimer=null,currentDateIndex=0,raceFrame=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num=n=>Number(n||0).toLocaleString("ja-JP");
+const formatTime=sec=>{sec=Number(sec||0);let h=Math.floor(sec/3600),m=Math.floor(sec%3600/60);return h?`${h.toLocaleString()}h ${m}m`:`${m}m`};
+const parseDate=s=>new Date(s+"T00:00:00");
+const addDays=(d,n)=>new Date(d.getTime()+n*86400000);
+const fmtDate=d=>`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
+
+async function get(path){
+  const r=await fetch(DB+path+".json");
+  if(!r.ok)throw Error(`Firebase HTTP ${r.status}: ${path}`);
+  return await r.json();
+}
+
+function rankList(){
+  return Object.values(songs).filter(Boolean).sort((a,b)=>
+    Number(b.playCount||0)-Number(a.playCount||0) ||
+    Number(a.order||0)-Number(b.order||0)
+  );
+}
+function competitionRanks(list){
+  let last=null,rank=0;
+  return list.map((s,i)=>{let p=Number(s.playCount||0);if(p!==last)rank=i+1;last=p;return rank});
+}
+
+function renderOverview(){
+  const list=rankList();
+  $("songCount").textContent=num(list.length);
+  $("totalPlays").textContent=num(list.reduce((a,s)=>a+Number(s.playCount||0),0));
+  $("totalTime").textContent=formatTime(list.reduce((a,s)=>a+Number(s.totalWatchTime||0),0));
+  $("dayCount").textContent=num(dates.length);
+
+  const ranks=competitionRanks(list);
+  $("ranking").innerHTML=list.slice(0,50).map((s,i)=>`
+    <tr><td class="rank">#${ranks[i]}</td>
+    <td><a class="song-link" href="./index.html?id=${encodeURIComponent(s.id||"")}">${esc(s.title||"Unknown")}</a></td>
+    <td class="pref">#${Number(s.order||0)+1}</td><td class="plays">${num(s.playCount)}</td></tr>
+  `).join("");
+
+  const top=list.slice(0,20),max=Math.max(1,...top.map(s=>Number(s.playCount||0)));
+  $("top20Chart").innerHTML=top.map((s,i)=>{
+    const w=Math.max(2,Number(s.playCount||0)/max*100);
+    return `<div style="display:grid;grid-template-columns:35px minmax(150px,260px) 1fr 75px;gap:8px;align-items:center;margin:8px 0">
+      <b>#${i+1}</b><span title="${esc(s.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.title)}</span>
+      <div style="height:18px;background:#202632;border-radius:6px;overflow:hidden"><div style="height:100%;width:${w}%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:6px"></div></div>
+      <b style="text-align:right">${num(s.playCount)}</b>
+    </div>`;
+  }).join("");
+}
+
+function buildHistory(raw){
+  const out={};
+  if(!raw)return out;
+  for(const [date,day] of Object.entries(raw)){
+    if(!day||!day.songs)continue;
+    out[date]={};
+    for(const [id,s] of Object.entries(day.songs||{})){
+      if(!s)continue;
+      out[date][id]={
+        playCount:Number.isFinite(Number(s.playCount))?Number(s.playCount):null,
+        totalWatchTime:Number.isFinite(Number(s.totalWatchTime))?Number(s.totalWatchTime):null,
+        order:Number.isFinite(Number(s.order))?Number(s.order):null
+      };
+    }
+  }
+  return out;
+}
+
+/* ---------- Smooth bar chart race ---------- */
+let raceRows={};
+function snapshotRows(date){
+  const values=history[date]||{};
+  return Object.entries(values).map(([id,v])=>({
+    id, plays:v.playCount, s:songs[id]
+  })).filter(x=>x.s && x.plays!==null);
+}
+function getRaceFrameData(dateIndex,t){
+  const d0=dates[dateIndex],d1=dates[Math.min(dateIndex+1,dates.length-1)];
+  const a=history[d0]||{},b=history[d1]||{};
+  const map=new Map();
+  for(const id of new Set([...Object.keys(a),...Object.keys(b)])){
+    const va=a[id]?.playCount,vb=b[id]?.playCount;
+    if(va===null&&vb===null)continue;
+    if(va===undefined||va===null||vb===undefined||vb===null)continue;
+    if(!songs[id])continue;
+    map.set(id,{id,plays:va+(vb-va)*t,s:songs[id]});
+  }
+  return [...map.values()].sort((x,y)=>y.plays-x.plays);
+}
+function ensureRaceRows(n){
+  const stage=$("raceStage");
+  const keep=new Set();
+  for(let i=0;i<n;i++){
+    keep.add(i);
+    if(!raceRows[i]){
+      const el=document.createElement("div");
+      el.className="race-row";
+      el.innerHTML=`<span class="race-rank"></span><span class="race-label"></span><span class="race-track"><span class="race-fill"></span></span><span class="race-value"></span>`;
+      stage.appendChild(el);raceRows[i]=el;
+    }
+  }
+  for(const k of Object.keys(raceRows))if(!keep.has(Number(k))){raceRows[k].remove();delete raceRows[k]}
+}
+function drawRaceFrame(dateIndex,t){
+  const rows=getRaceFrameData(dateIndex,t).slice(0,Number($("topN").value));
+  ensureRaceRows(rows.length);
+  const max=Math.max(1,...rows.map(x=>x.plays));
+  rows.forEach((x,i)=>{
+    const el=raceRows[i];
+    el.style.transform=`translateY(${i*36}px)`;
+    el.style.opacity="1";
+    el.querySelector(".race-rank").textContent="#"+(i+1);
+    el.querySelector(".race-label").textContent=x.s.title||"Unknown";
+    el.querySelector(".race-label").title=x.s.title||"";
+    el.querySelector(".race-fill").style.width=(Math.max(0,x.plays)/max*100)+"%";
+    el.querySelector(".race-value").textContent=num(Math.round(x.plays));
+  });
+  $("raceDateWatermark").textContent=dates[Math.min(dateIndex+1,dates.length-1)]||"";
+  $("dateLabel").textContent=dates[dateIndex]||"—";
+  $("dateSlider").value=dateIndex;
+  $("raceInfo").textContent=`${rows.length}曲 / ${dates[dateIndex]||"—"} → ${dates[Math.min(dateIndex+1,dates.length-1)]||"—"}`;
+}
+function renderRace(){drawRaceFrame(currentDateIndex,0)}
+function stopRace(){
+  if(raceTimer){clearTimeout(raceTimer);raceTimer=null}
+  if(raceFrame){cancelAnimationFrame(raceFrame);raceFrame=null}
+}
+function playNextTransition(){
+  if(currentDateIndex>=dates.length-1){stopRace();renderRace();return}
+  const start=performance.now(),duration=Number($("raceSpeed").value);
+  const from=currentDateIndex;
+  function step(now){
+    const t=Math.min(1,(now-start)/duration);
+    const eased=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    drawRaceFrame(from,eased);
+    if(t<1)raceFrame=requestAnimationFrame(step);
+    else{
+      currentDateIndex++;
+      raceFrame=null;
+      raceTimer=setTimeout(playNextTransition,80);
+    }
+  }
+  raceFrame=requestAnimationFrame(step);
+}
+function setupRace(){
+  $("dateSlider").max=Math.max(0,dates.length-1);
+  $("dateSlider").value=currentDateIndex;
+  $("dateSlider").oninput=e=>{stopRace();currentDateIndex=Number(e.target.value);renderRace()};
+  $("topN").onchange=()=>{stopRace();renderRace()};
+  $("raceSpeed").onchange=()=>{};
+  $("playRace").onclick=()=>{if(raceTimer||raceFrame||dates.length<2)return;playNextTransition()};
+  $("stopRace").onclick=stopRace;
+  renderRace();
+}
+
+/* ---------- Recent 7 days ---------- */
+function findBaselineIndex(){
+  if(!dates.length)return -1;
+  const latest=parseDate(dates[dates.length-1]);
+  const target=addDays(latest,-7);
+  let best=-1;
+  for(let i=0;i<dates.length;i++)if(parseDate(dates[i])<=target)best=i;
+  if(best>=0)return best;
+  return 0;
+}
+function renderWeekly(){
+  if(dates.length<2)return;
+  const latest=dates[dates.length-1],bi=findBaselineIndex(),base=dates[bi];
+  $("weekRange").textContent=`${base} → ${latest}`;
+  const a=history[base]||{},b=history[latest]||{};
+  const make=(field,formatter)=>Object.entries(b).map(([id,v])=>{
+    const cur=v?.[field],old=a[id]?.[field];
+    if(cur===null||cur===undefined||old===null||old===undefined||!songs[id])return null;
+    const delta=cur-old;
+    return {id,delta,s:songs[id],text:formatter(delta)};
+  }).filter(Boolean).filter(x=>x.delta>0).sort((x,y)=>y.delta-x.delta).slice(0,20);
+  const plays=make("playCount",x=>num(x));
+  const time=make("totalWatchTime",formatTime);
+  const table=(arr)=>arr.length?arr.map((x,i)=>`<tr><td>#${i+1}</td><td><a class="song-link" href="./index.html?id=${encodeURIComponent(x.s.id||x.id)}">${esc(x.s.title)}</a></td><td class="gain">+${x.text}</td></tr>`).join(""):`<tr><td colspan="3" class="empty">この期間に比較可能なデータがありません。</td></tr>`;
+  $("weeklyPlays").innerHTML=table(plays);
+  $("weeklyTime").innerHTML=table(time);
+}
+
+/* ---------- Historical preference #1 succession ---------- */
+function renderChampions(){
+  const observations=[];
+  for(const date of dates){
+    const vals=history[date]||{};
+    const candidates=Object.entries(vals).filter(([id,v])=>v && v.order===0 && songs[id]);
+    if(!candidates.length)continue;
+    candidates.sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+    observations.push({date,id:candidates[0][0]});
+  }
+  const eras=[];
+  for(const o of observations){
+    const last=eras[eras.length-1];
+    if(last && last.id===o.id)last.end=o.date;
+    else eras.push({id:o.id,start:o.date,end:o.date});
+  }
+  const list=eras.map((e,i)=>({...e,s:songs[e.id]}));
+  $("champions").innerHTML=list.length?list.map((e,i)=>`
+    <div class="champion">
+      <div class="champion-era">第${i+1}代</div>
+      <div class="champion-title"><a class="song-link" href="./index.html?id=${encodeURIComponent(e.id)}">${esc(e.s.title)}</a></div>
+      <div class="champion-date">${e.start===e.end?e.start:e.start+" → "+e.end}</div>
+    </div>
+  `).join(""):`<div class="empty">order=0 の履歴がまだありません。</div>`;
+}
+
+async function load(){
+  stopRace();
+  $("message").className="loading";$("message").textContent="Firebaseからデータを読み込んでいます…";$("app").style.display="none";
+  try{
+    songs=await get("/music_chart/songs")||{};
+    history=buildHistory(await get("/music_chart/daily_history"));
+    dates=Object.keys(history).sort();
+    currentDateIndex=Math.max(0,dates.length-1);
+    renderOverview();setupRace();renderWeekly();renderChampions();
+    $("message").style.display="none";$("app").style.display="";
+  }catch(e){
+    $("message").className="error";$("message").textContent="データの読み込みに失敗しました。\n"+e.message;
+  }
+}
+$("reload").onclick=load;
+load();
+</script>
+</body>
+</html>
