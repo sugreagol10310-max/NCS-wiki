@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -95,6 +95,7 @@
       display: inline-flex; align-items: center; justify-content: center;
       text-decoration: none; border-radius: 12px; padding: 11px 15px;
       border: 1px solid var(--line); background: var(--panel-2); font-weight: 700;
+      cursor: pointer; color: var(--text); font-size: 13px;
     }
     .btn:hover { border-color: #465168; }
     .btn.primary { background: #e8f7ff; color: #081018; border-color: transparent; }
@@ -106,7 +107,15 @@
       border-radius: var(--radius);
       padding: 24px;
     }
-    .section h2 { margin: 0 0 14px; font-size: 20px; }
+    .section-header-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .section h2 { margin: 0; font-size: 20px; }
 
     .meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
     .meta-item { padding: 14px; background: rgba(255,255,255,.025); border-radius: 14px; }
@@ -121,7 +130,6 @@
     }
     .error { color: #fecdd3; }
     .error strong { display:block; color: #ffe4e6; font-size: 18px; margin-bottom: 8px; }
-
 
     .chart-wrap { position: relative; }
     .chart-box {
@@ -152,10 +160,14 @@
     .chart-empty { min-height: 320px; display:grid; place-items:center; color:var(--muted); padding:30px; text-align:center; }
     .chart-legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; color:var(--muted); font-size:12px; }
     .legend-dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:6px; background:var(--accent); }
-    .stats-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+    .legend-dot.ma { background: var(--accent-2); }
+    
+    .stats-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:14px; }
     .mini-stat { padding:14px; background:rgba(255,255,255,.025); border-radius:14px; border:1px solid rgba(255,255,255,.05); }
     .mini-stat .num { font-size:20px; font-weight:750; margin-top:3px; }
     .mini-stat .hint { font-size:11px; color:var(--muted); margin-top:4px; }
+    .mini-stat.highlight { border-color: rgba(125,211,252,.3); background: rgba(125,211,252,.05); }
+
     .history-table { width:100%; border-collapse:collapse; margin-top:16px; font-size:13px; }
     .history-table th, .history-table td { padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.06); text-align:left; }
     .history-table th { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
@@ -163,13 +175,6 @@
     .delta-down { color:#fda4af; }
     .delta-none { color:var(--muted); }
     .note { margin-top:12px; padding:11px 12px; border-radius:12px; background:rgba(125,211,252,.05); border:1px solid rgba(125,211,252,.12); color:#bfd7e4; font-size:12px; line-height:1.6; }
-    @media (max-width: 720px) {
-      .stats-grid { grid-template-columns:1fr; }
-      .chart-svg { height: 300px; }
-      .history-table { font-size:12px; }
-      .history-table th:nth-child(3), .history-table td:nth-child(3) { display:none; }
-    }
-
 
     .hero-main {
       display: grid;
@@ -194,9 +199,7 @@
       background: linear-gradient(135deg, rgba(255,255,255,.08), transparent 45%);
       pointer-events: none;
     }
-    .thumb {
-      width: 100%; height: 100%; object-fit: cover; display: block;
-    }
+    .thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
     .thumb-fallback { display:grid; place-items:center; height:100%; color:var(--muted); font-size:12px; padding:12px; text-align:center; }
     .hero-copy { min-width: 0; }
 
@@ -210,6 +213,8 @@
     }
     .congrats-title { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
     .congrats-sub { margin-top: 5px; color:#b7c9bd; font-size: 12px; line-height:1.6; }
+    
+    .milestone-section-title { font-size: 14px; font-weight: 700; color: var(--accent); margin: 16px 0 10px; }
     .milestones-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
     .milestone-card {
       padding:14px; border-radius:14px; background:rgba(255,255,255,.025);
@@ -218,11 +223,6 @@
     .milestone-card.achieved { border-color:rgba(134,239,172,.2); background:rgba(34,197,94,.06); }
     .milestone-card .m-value { font-size:19px; font-weight:800; }
     .milestone-card .m-status { margin-top:4px; font-size:11px; color:var(--muted); line-height:1.5; }
-    @media (max-width: 720px) {
-      .hero-main { grid-template-columns: 1fr; }
-      .thumb-wrap { max-width: 520px; margin: 0 auto; }
-      .milestones-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-    }
 
     .hidden { display: none; }
 
@@ -234,137 +234,57 @@
       padding: 18px;
       box-shadow: var(--shadow);
     }
-    .search-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 10px;
-    }
+    .search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
     .search-input {
-      width: 100%;
-      min-width: 0;
-      padding: 13px 15px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: #0f141c;
-      color: var(--text);
-      font: inherit;
-      outline: none;
+      width: 100%; min-width: 0; padding: 13px 15px; border-radius: 12px;
+      border: 1px solid var(--line); background: #0f141c; color: var(--text);
+      font: inherit; outline: none;
     }
-    .search-input:focus {
-      border-color: rgba(125,211,252,.55);
-      box-shadow: 0 0 0 3px rgba(125,211,252,.08);
-    }
-    .search-results {
-      margin-top: 10px;
-      display: grid;
-      gap: 8px;
-      max-height: 340px;
-      overflow: auto;
-    }
+    .search-input:focus { border-color: rgba(125,211,252,.55); box-shadow: 0 0 0 3px rgba(125,211,252,.08); }
+    .search-results { margin-top: 10px; display: grid; gap: 8px; max-height: 340px; overflow: auto; }
     .search-result {
-      width: 100%;
-      display: grid;
-      grid-template-columns: 56px minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 12px;
-      text-align: left;
-      padding: 10px;
-      border: 1px solid rgba(255,255,255,.06);
-      border-radius: 12px;
-      background: rgba(255,255,255,.025);
-      color: var(--text);
-      cursor: pointer;
-      font: inherit;
+      width: 100%; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto;
+      align-items: center; gap: 12px; text-align: left; padding: 10px;
+      border: 1px solid rgba(255,255,255,.06); border-radius: 12px; background: rgba(255,255,255,.025);
+      color: var(--text); cursor: pointer; font: inherit;
     }
-    .search-result:hover {
-      border-color: rgba(125,211,252,.25);
-      background: rgba(125,211,252,.045);
-    }
+    .search-result:hover { border-color: rgba(125,211,252,.25); background: rgba(125,211,252,.045); }
     .search-result-thumb {
-      width: 56px;
-      aspect-ratio: 16/9;
-      object-fit: cover;
-      border-radius: 8px;
-      background: #0f141c;
-      border: 1px solid rgba(255,255,255,.08);
+      width: 56px; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px;
+      background: #0f141c; border: 1px solid rgba(255,255,255,.08);
     }
     .search-result-main { min-width: 0; }
-    .search-result-title {
-      font-weight: 750;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .search-result-sub {
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 11px;
-    }
-    .search-result-rank {
-      text-align: right;
-      white-space: nowrap;
-      color: #cfeeff;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .search-empty {
-      color: var(--muted);
-      font-size: 12px;
-      padding: 8px 2px 2px;
-    }
-    .ranking-note {
-      margin-top: 9px;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.5;
-    }
-    .ranking-highlight {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 24px;
-    }
+    .search-result-title { font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-result-sub { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .search-result-rank { text-align: right; white-space: nowrap; color: #cfeeff; font-size: 12px; font-weight: 700; }
+    .search-empty { color: var(--muted); font-size: 12px; padding: 8px 2px 2px; }
+    .ranking-note { margin-top: 9px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .ranking-highlight { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
     .rank-card {
-      position: relative;
-      overflow: hidden;
-      padding: 17px 18px;
-      border-radius: 16px;
+      position: relative; overflow: hidden; padding: 17px 18px; border-radius: 16px;
       border: 1px solid rgba(255,255,255,.08);
       background: linear-gradient(145deg, rgba(125,211,252,.09), rgba(167,139,250,.07));
     }
-    .rank-card.personal {
-      background: linear-gradient(145deg, rgba(167,139,250,.11), rgba(255,255,255,.025));
-    }
+    .rank-card.personal { background: linear-gradient(145deg, rgba(167,139,250,.11), rgba(255,255,255,.025)); }
     .rank-card .label { font-size: 11px; }
-    .rank-card .rank-number {
-      margin-top: 3px;
-      font-size: 34px;
-      line-height: 1;
-      font-weight: 850;
-      letter-spacing: -.045em;
-    }
-    .rank-card .rank-caption {
-      margin-top: 6px;
-      font-size: 11px;
-      color: var(--muted);
-    }
-    .rank-card .rank-icon {
-      position: absolute;
-      right: 14px;
-      top: 10px;
-      font-size: 24px;
-      opacity: .72;
-    }
-    @media (max-width: 720px) {
-      .search-row { grid-template-columns: 1fr; }
-      .ranking-highlight { grid-template-columns: 1fr; }
-    }
+    .rank-card .rank-number { margin-top: 3px; font-size: 34px; line-height: 1; font-weight: 850; letter-spacing: -.045em; }
+    .rank-card .rank-caption { margin-top: 6px; font-size: 11px; color: var(--muted); }
+    .rank-card .rank-icon { position: absolute; right: 14px; top: 10px; font-size: 24px; opacity: .72; }
 
     @media (max-width: 720px) {
       .wrap { width: min(100% - 20px, 1100px); padding-top: 18px; }
       .hero { padding: 22px; border-radius: 16px; }
       .hero-grid, .meta-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .section-card { padding: 18px; }
+      .search-row { grid-template-columns: 1fr; }
+      .ranking-highlight { grid-template-columns: 1fr; }
+      .hero-main { grid-template-columns: 1fr; }
+      .thumb-wrap { max-width: 520px; margin: 0 auto; }
+      .milestones-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .chart-svg { height: 300px; }
+      .history-table { font-size: 12px; }
+      .history-table th:nth-child(3), .history-table td:nth-child(3) { display: none; }
     }
   </style>
 </head>
@@ -441,6 +361,7 @@
         </div>
       </section>
 
+      <!-- 1 & 4. 視聴回数変遷 ＆ 予測機能 -->
       <section class="section">
         <div class="section-card">
           <h2>Play Count History</h2>
@@ -448,20 +369,45 @@
             <div class="mini-stat"><div class="label">Observations</div><div class="num" id="observationCount">—</div><div class="hint" id="observationRange">—</div></div>
             <div class="mini-stat"><div class="label">Largest Daily Increase</div><div class="num" id="maxDailyIncrease">—</div><div class="hint" id="maxDailyIncreaseDate">—</div></div>
             <div class="mini-stat"><div class="label">Latest Snapshot</div><div class="num" id="latestSnapshot">—</div><div class="hint" id="latestSnapshotDate">—</div></div>
+            <!-- 機能4: 1ヶ月後予測数字 -->
+            <div class="mini-stat highlight"><div class="label">1ヶ月後の予測視聴回数</div><div class="num" id="predictedPlays">—</div><div class="hint">トレンドライン予測 (+30日)</div></div>
           </div>
           <div class="chart-box" id="chartBox">
             <div class="chart-empty" id="chartEmpty">Loading daily history…</div>
           </div>
-          <div class="chart-legend"><span><span class="legend-dot"></span>Observed cumulative plays</span><span>Missing dates are shown as gaps, not zero</span></div>
+          <div class="chart-legend"><span><span class="legend-dot"></span>Observed cumulative plays</span><span>Y軸の下限は0固定</span></div>
           <div class="note" id="historyNote">The graph uses only the snapshots actually stored under <code>music_chart/daily_history</code>.</div>
         </div>
       </section>
 
+      <!-- 3. 好き度ランキング変遷グラフ -->
+      <section class="section">
+        <div class="section-card">
+          <div class="section-header-flex">
+            <h2>好き度ランキング変遷</h2>
+            <button id="toggleMaBtn" class="btn" type="button">移動平均線: ON</button>
+          </div>
+          <div class="chart-box" id="rankChartBox">
+            <div class="chart-empty" id="rankChartEmpty">Loading rank history…</div>
+          </div>
+          <div class="chart-legend">
+            <span><span class="legend-dot"></span>好き度順位 (1位が最上位)</span>
+            <span id="maLegend"><span class="legend-dot ma"></span>3日移動平均</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. マイルストーン（回数ベース＆時間ベース） -->
       <section class="section">
         <div class="section-card">
           <h2>Milestones</h2>
-          <div class="milestones-grid" id="milestonesGrid"></div>
-          <div class="note">Milestone dates are based on stored daily snapshots. When a threshold falls between two observations, the page reports the interval rather than inventing an exact time.</div>
+          <div class="milestone-section-title">視聴回数マイルストーン</div>
+          <div class="milestones-grid" id="playMilestonesGrid"></div>
+          
+          <div class="milestone-section-title">視聴時間マイルストーン</div>
+          <div class="milestones-grid" id="timeMilestonesGrid"></div>
+          
+          <div class="note">Milestone dates are based on stored daily snapshots and live watch times.</div>
         </div>
       </section>
 
@@ -490,13 +436,13 @@
   </main>
 
   <script>
-    // script
     const FIREBASE_BASE = "https://ncs-music-e2d05-default-rtdb.firebaseio.com";
     const DEFAULT_SONG_ID = "1785407081629";
 
     let allSongs = {};
     let playRankMap = {};
-
+    let currentHistoryRows = [];
+    let showMovingAverage = true;
 
     const $ = (id) => document.getElementById(id);
 
@@ -550,7 +496,6 @@
       return { artist: title.slice(0, index), song: title.slice(index + 3) };
     }
 
-
     function calculatePlayRanks(songs) {
       const entries = Object.entries(songs || {})
         .map(([id, song]) => ({
@@ -560,7 +505,6 @@
         .filter(row => Number.isFinite(row.plays))
         .sort((a, b) => b.plays - a.plays || a.id.localeCompare(b.id));
 
-      // Competition ranking: 1, 2, 2, 4...
       const ranks = {};
       let previousPlays = null;
       let currentRank = 0;
@@ -691,9 +635,14 @@
         if (!record || typeof record !== "object") continue;
         const plays = Number(record.playCount);
         if (!Number.isFinite(plays)) continue;
+        
+        const orderNum = Number(record.order);
+        const rank = Number.isFinite(orderNum) ? orderNum + 1 : null;
+
         rows.push({
           date,
           plays,
+          rank,
           totalWatchTime: Number(record.totalWatchTime),
           timestamp: Number(day.timestamp)
         });
@@ -714,6 +663,40 @@
       return Math.round((db - da) / 86400000);
     }
 
+    // 機能4: 1ヶ月後の予測数値計算 (最小二乗法)
+    function predictFuturePlays(rows) {
+      if (rows.length < 2) return "—";
+      
+      const firstDate = new Date(`${rows[0].date}T00:00:00Z`);
+      const points = rows.map(r => {
+        const d = new Date(`${r.date}T00:00:00Z`);
+        const x = Math.round((d - firstDate) / 86400000);
+        return { x, y: r.plays };
+      });
+
+      const n = points.length;
+      let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+      for (const p of points) {
+        sumX += p.x;
+        sumY += p.y;
+        sumXY += p.x * p.y;
+        sumXX += p.x * p.x;
+      }
+
+      const denominator = (n * sumXX - sumX * sumX);
+      if (denominator === 0) return "—";
+
+      const slope = (n * sumXY - sumX * sumY) / denominator;
+      const intercept = (sumY - slope * sumX) / n;
+
+      // 最終日から30日後
+      const lastX = points[points.length - 1].x;
+      const targetX = lastX + 30;
+      const predicted = Math.max(points[points.length - 1].y, Math.round(slope * targetX + intercept));
+
+      return formatNumber(predicted);
+    }
+
     function renderHistorySummary(rows) {
       if (!rows.length) {
         $("observationCount").textContent = "0";
@@ -722,6 +705,7 @@
         $("maxDailyIncreaseDate").textContent = "—";
         $("latestSnapshot").textContent = "—";
         $("latestSnapshotDate").textContent = "—";
+        $("predictedPlays").textContent = "—";
         return;
       }
 
@@ -741,6 +725,9 @@
       $("maxDailyIncreaseDate").textContent = maxIncrease ? formatDate(maxIncrease.date) : "Not enough consecutive daily data";
       $("latestSnapshot").textContent = formatNumber(rows[rows.length - 1].plays);
       $("latestSnapshotDate").textContent = formatDate(rows[rows.length - 1].date);
+      
+      // 機能4の値を反映
+      $("predictedPlays").textContent = predictFuturePlays(rows);
     }
 
     function renderRecentHistory(rows) {
@@ -776,6 +763,7 @@
       wrap.replaceChildren(table);
     }
 
+    // 機能1: 視聴回数グラフ (Y軸0固定)
     function renderChart(rows) {
       const box = $("chartBox");
       box.replaceChildren();
@@ -789,9 +777,11 @@
       const pad = { left: 58, right: 20, top: 24, bottom: 42 };
       const innerW = width - pad.left - pad.right;
       const innerH = height - pad.top - pad.bottom;
-      const minY = Math.min(...rows.map(r => r.plays));
-      const maxY = Math.max(...rows.map(r => r.plays));
-      const ySpan = Math.max(1, maxY - minY);
+      
+      // 機能1: Y軸の最小値を強制的に0にする
+      const minY = 0;
+      const maxY = Math.max(10, Math.max(...rows.map(r => r.plays)));
+      const ySpan = maxY - minY;
 
       const xFor = i => rows.length === 1 ? pad.left + innerW / 2 : pad.left + (i / (rows.length - 1)) * innerW;
       const yFor = v => pad.top + (1 - ((v - minY) / ySpan)) * innerH;
@@ -801,14 +791,13 @@
       svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
       svg.setAttribute("class", "chart-svg");
       svg.setAttribute("role", "img");
-      svg.setAttribute("aria-label", "Cumulative play count over time");
 
       const addLine = (x1, y1, x2, y2, stroke, opacity="1", dash="") => {
         const el = document.createElementNS(svgNS, "line");
         el.setAttribute("x1", x1); el.setAttribute("y1", y1); el.setAttribute("x2", x2); el.setAttribute("y2", y2);
         el.setAttribute("stroke", stroke); el.setAttribute("stroke-opacity", opacity);
         if (dash) el.setAttribute("stroke-dasharray", dash);
-        el.setAttribute("stroke-width", "1");
+        el.setAttribute("stroke-width", "1.5");
         svg.appendChild(el);
       };
 
@@ -827,7 +816,6 @@
         addText(pad.left - 8, y + 4, formatNumber(Math.round(value)), "end");
       }
 
-      // Segmented lines: do not connect across missing dates.
       for (let i = 1; i < rows.length; i++) {
         if (daysBetween(rows[i - 1].date, rows[i].date) !== 1) continue;
         addLine(xFor(i - 1), yFor(rows[i - 1].plays), xFor(i), yFor(rows[i].plays), "#7dd3fc", "0.95");
@@ -868,8 +856,130 @@
       function hideTooltip() { tooltip.classList.add("hidden"); }
     }
 
+    // 機能3: 好き度ランキング変遷グラフ & 移動平均線
+    function renderRankChart(rows) {
+      const box = $("rankChartBox");
+      box.replaceChildren();
+      
+      const validRows = rows.filter(r => r.rank !== null && Number.isFinite(r.rank));
+      if (!validRows.length) {
+        box.innerHTML = '<div class="chart-empty">No rank history available.</div>';
+        return;
+      }
 
-    const MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
+      const width = 1000;
+      const height = 360;
+      const pad = { left: 58, right: 20, top: 24, bottom: 42 };
+      const innerW = width - pad.left - pad.right;
+      const innerH = height - pad.top - pad.bottom;
+
+      const ranks = validRows.map(r => r.rank);
+      let minRank = Math.min(...ranks);
+      let maxRank = Math.max(...ranks);
+      if (minRank === maxRank) { minRank = Math.max(1, minRank - 2); maxRank = maxRank + 2; }
+
+      const xFor = i => validRows.length === 1 ? pad.left + innerW / 2 : pad.left + (i / (validRows.length - 1)) * innerW;
+      // ランキングは1位が上に来るように反転させる (minRankが上、maxRankが下)
+      const yFor = v => pad.top + ((v - minRank) / (maxRank - minRank)) * innerH;
+
+      const svgNS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.setAttribute("class", "chart-svg");
+
+      const addLine = (x1, y1, x2, y2, stroke, opacity="1", dash="", widthStr="1.5") => {
+        const el = document.createElementNS(svgNS, "line");
+        el.setAttribute("x1", x1); el.setAttribute("y1", y1); el.setAttribute("x2", x2); el.setAttribute("y2", y2);
+        el.setAttribute("stroke", stroke); el.setAttribute("stroke-opacity", opacity);
+        if (dash) el.setAttribute("stroke-dasharray", dash);
+        el.setAttribute("stroke-width", widthStr);
+        svg.appendChild(el);
+      };
+
+      const addText = (x, y, text, anchor="start") => {
+        const el = document.createElementNS(svgNS, "text");
+        el.setAttribute("x", x); el.setAttribute("y", y); el.setAttribute("fill", "#98a2b3");
+        el.setAttribute("font-size", "11"); el.setAttribute("text-anchor", anchor); el.textContent = text;
+        svg.appendChild(el);
+      };
+
+      // Y軸グリッド (順位)
+      const tickCount = Math.min(5, maxRank - minRank);
+      for (let i = 0; i <= tickCount; i++) {
+        const value = Math.round(minRank + ((maxRank - minRank) * i / tickCount));
+        const y = yFor(value);
+        addLine(pad.left, y, width - pad.right, y, "#334155", "0.5");
+        addText(pad.left - 8, y + 4, `#${value}`, "end");
+      }
+
+      // 好き度ランキング折れ線
+      for (let i = 1; i < validRows.length; i++) {
+        if (daysBetween(validRows[i - 1].date, validRows[i].date) !== 1) continue;
+        addLine(xFor(i - 1), yFor(validRows[i - 1].rank), xFor(i), yFor(validRows[i].rank), "#7dd3fc", "0.95");
+      }
+
+      // 移動平均線（3日移動平均）
+      if (showMovingAverage && validRows.length >= 3) {
+        const maPoints = [];
+        for (let i = 0; i < validRows.length; i++) {
+          if (i < 2) { maPoints.push(null); continue; }
+          const avg = (validRows[i].rank + validRows[i - 1].rank + validRows[i - 2].rank) / 3;
+          maPoints.push(avg);
+        }
+
+        for (let i = 1; i < validRows.length; i++) {
+          if (maPoints[i - 1] !== null && maPoints[i] !== null) {
+            if (daysBetween(validRows[i - 1].date, validRows[i].date) !== 1) continue;
+            addLine(xFor(i - 1), yFor(maPoints[i - 1]), xFor(i), yFor(maPoints[i]), "#a78bfa", "0.85", "4 4", "2");
+          }
+        }
+      }
+
+      // データポイント
+      validRows.forEach((row, i) => {
+        const c = document.createElementNS(svgNS, "circle");
+        c.setAttribute("cx", xFor(i)); c.setAttribute("cy", yFor(row.rank)); c.setAttribute("r", validRows.length > 60 ? "3" : "4.5");
+        c.setAttribute("fill", "#7dd3fc");
+        c.style.cursor = "pointer";
+        c.addEventListener("mouseenter", () => showTooltip(i));
+        c.addEventListener("mouseleave", hideTooltip);
+        svg.appendChild(c);
+      });
+
+      const labelIndexes = validRows.length <= 8
+        ? validRows.map((_, i) => i)
+        : [0, Math.floor((validRows.length - 1) / 2), validRows.length - 1];
+      const uniqueIndexes = [...new Set(labelIndexes)];
+      for (const i of uniqueIndexes) {
+        addText(xFor(i), height - 14, formatDate(validRows[i].date), i === 0 ? "start" : i === validRows.length - 1 ? "end" : "middle");
+      }
+
+      box.appendChild(svg);
+
+      const tooltip = document.createElement("div");
+      tooltip.className = "chart-tooltip hidden";
+      tooltip.id = "rankChartTooltip";
+      box.appendChild(tooltip);
+
+      function showTooltip(i) {
+        const row = validRows[i];
+        tooltip.innerHTML = `<strong>#${escapeHtml(formatNumber(row.rank))}位</strong>${escapeHtml(formatDate(row.date))}`;
+        tooltip.style.left = `${(xFor(i) / width) * 100}%`;
+        tooltip.style.top = `${(yFor(row.rank) / height) * 100}%`;
+        tooltip.classList.remove("hidden");
+      }
+      function hideTooltip() { tooltip.classList.add("hidden"); }
+    }
+
+    // 機能2: 新しいマイルストーン定義 (回数 & 時間)
+    const PLAY_MILESTONES = [10, 20, 50, 100, 200, 300, 400, 500];
+    const TIME_MILESTONES = [
+      { label: "1時間", seconds: 3600 },
+      { label: "3時間", seconds: 10800 },
+      { label: "6時間", seconds: 21600 },
+      { label: "12時間", seconds: 43200 },
+      { label: "24時間", seconds: 86400 }
+    ];
 
     function getMilestoneState(milestone, currentPlays, rows) {
       const achievedNow = Number.isFinite(currentPlays) && currentPlays >= milestone;
@@ -895,28 +1005,66 @@
       }
 
       if (achievedNow) {
-        return { achieved: true, label: 'Reached live', detail: 'Live value is at/above this milestone; daily snapshot has not caught up yet' };
+        return { achieved: true, label: 'Reached live', detail: 'Live value is at/above this milestone' };
       }
 
       return { achieved: false, label: 'Not yet', detail: '' };
     }
 
+    function getTimeMilestoneState(targetSeconds, currentWatchTime, rows) {
+      const achievedNow = Number.isFinite(currentWatchTime) && currentWatchTime >= targetSeconds;
+      let observed = null;
+
+      for (let i = 0; i < rows.length; i++) {
+        if (Number.isFinite(rows[i].totalWatchTime) && rows[i].totalWatchTime >= targetSeconds) {
+          observed = rows[i];
+          break;
+        }
+      }
+
+      if (observed) {
+        return { achieved: true, label: formatDate(observed.date), detail: `First recorded on ${formatDate(observed.date)}` };
+      }
+      if (achievedNow) {
+        return { achieved: true, label: 'Reached live', detail: 'Achieved in live play data' };
+      }
+      return { achieved: false, label: 'Not yet', detail: '' };
+    }
+
     function renderMilestones(song, rows) {
-      const current = Number(song.playCount);
-      const grid = $("milestonesGrid");
-      grid.replaceChildren();
-      for (const milestone of MILESTONES) {
-        const state = getMilestoneState(milestone, current, rows);
+      const currentPlays = Number(song.playCount);
+      const songDuration = Number(song.duration) || 0;
+      // 総視聴時間が数値で存在しない場合は (再生回数 × 曲長) で補正
+      const currentWatchTime = Number.isFinite(Number(song.totalWatchTime)) 
+        ? Number(song.totalWatchTime) 
+        : currentPlays * songDuration;
+
+      // 回数ベース
+      const playGrid = $("playMilestonesGrid");
+      playGrid.replaceChildren();
+      for (const milestone of PLAY_MILESTONES) {
+        const state = getMilestoneState(milestone, currentPlays, rows);
         const card = document.createElement('div');
         card.className = `milestone-card${state.achieved ? ' achieved' : ''}`;
-        card.innerHTML = `\n          <div class="m-value">${escapeHtml(formatNumber(milestone))}</div>\n          <div class="m-status">${escapeHtml(state.label)}${state.achieved && state.detail ? `<br>${escapeHtml(state.detail)}` : ''}</div>`;
-        grid.appendChild(card);
+        card.innerHTML = `<div class="m-value">${escapeHtml(formatNumber(milestone))}回</div><div class="m-status">${escapeHtml(state.label)}${state.achieved && state.detail ? `<br>${escapeHtml(state.detail)}` : ''}</div>`;
+        playGrid.appendChild(card);
+      }
+
+      // 時間ベース
+      const timeGrid = $("timeMilestonesGrid");
+      timeGrid.replaceChildren();
+      for (const item of TIME_MILESTONES) {
+        const state = getTimeMilestoneState(item.seconds, currentWatchTime, rows);
+        const card = document.createElement('div');
+        card.className = `milestone-card${state.achieved ? ' achieved' : ''}`;
+        card.innerHTML = `<div class="m-value">${escapeHtml(item.label)}</div><div class="m-status">${escapeHtml(state.label)}${state.achieved && state.detail ? `<br>${escapeHtml(state.detail)}` : ''}</div>`;
+        timeGrid.appendChild(card);
       }
     }
 
     function renderCongrats(song, rows) {
       const current = Number(song.playCount);
-      const candidates = MILESTONES.filter(n => Number.isFinite(current) && current >= n);
+      const candidates = PLAY_MILESTONES.filter(n => Number.isFinite(current) && current >= n);
       const box = $("congrats");
       box.classList.add('hidden');
       box.replaceChildren();
@@ -976,6 +1124,7 @@
     }
 
     function renderSong(song, songId, sourceUrl, historyRows) {
+      currentHistoryRows = historyRows;
       const parsed = splitArtistTitle(song.title);
       const moods = normalizeMoods(song.moods);
 
@@ -1017,8 +1166,10 @@
       if (!song.youtubeId) $("youtubeLink").style.display = "none";
 
       $("firebaseLink").href = `${FIREBASE_BASE}/music_chart/songs/${encodeURIComponent(songId)}.json`;
+      
       renderHistorySummary(historyRows);
       renderChart(historyRows);
+      renderRankChart(historyRows);
       renderRecentHistory(historyRows);
       renderMilestones(song, historyRows);
 
@@ -1059,11 +1210,20 @@
       }
     }
 
+    // イベントリスナー設定
     $("songSearch").addEventListener("input", (event) => renderSearchResults(event.target.value));
     $("clearSearch").addEventListener("click", () => {
       $("songSearch").value = "";
       renderSearchResults("");
       $("songSearch").focus();
+    });
+
+    // 移動平均トグルボタン
+    $("toggleMaBtn").addEventListener("click", () => {
+      showMovingAverage = !showMovingAverage;
+      $("toggleMaBtn").textContent = `移動平均線: ${showMovingAverage ? "ON" : "OFF"}`;
+      $("maLegend").style.display = showMovingAverage ? "inline-block" : "none";
+      renderRankChart(currentHistoryRows);
     });
 
     window.addEventListener("popstate", () => loadSong());
