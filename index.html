@@ -176,6 +176,12 @@
     .delta-none { color:var(--muted); }
     .note { margin-top:12px; padding:11px 12px; border-radius:12px; background:rgba(125,211,252,.05); border:1px solid rgba(125,211,252,.12); color:#bfd7e4; font-size:12px; line-height:1.6; }
 
+    .badge-source {
+      display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px;
+    }
+    .badge-analytics { background: rgba(167,139,250,.2); color: #c4b5fd; border: 1px solid rgba(167,139,250,.4); }
+    .badge-daily { background: rgba(125,211,252,.2); color: #7dd3fc; border: 1px solid rgba(125,211,252,.4); }
+
     .hero-main {
       display: grid;
       grid-template-columns: 240px minmax(0, 1fr);
@@ -376,7 +382,7 @@
             <div class="chart-empty" id="chartEmpty">Loading daily history…</div>
           </div>
           <div class="chart-legend"><span><span class="legend-dot"></span>Observed cumulative plays</span><span>Y軸の下限は0固定</span></div>
-          <div class="note" id="historyNote">The graph uses only the snapshots actually stored under <code>music_chart/daily_history</code>.</div>
+          <div class="note" id="historyNote">The graph uses stored snapshots from <code>analytics_history</code> and <code>daily_history</code>.</div>
         </div>
       </section>
 
@@ -429,7 +435,7 @@
             <div class="meta-item"><div class="label">YouTube ID</div><div class="value" id="youtubeId">—</div></div>
             <div class="meta-item"><div class="label">好き度順位 (ORDER + 1)</div><div class="value" id="order">—</div></div>
           </div>
-          <div class="source">Song source: <code id="sourcePath"></code><br>History source: <code>music_chart/daily_history</code></div>
+          <div class="source">Song source: <code id="sourcePath"></code><br>History source: <code>analytics_history</code> + <code>daily_history</code></div>
         </div>
       </section>
     </div>
@@ -622,31 +628,64 @@
     async function fetchJson(path) {
       const url = `${FIREBASE_BASE}/${path}.json`;
       const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) throw new Error(`HTTP ${response.status} while reading ${path}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error(`HTTP ${response.status} while reading ${path}`);
+      }
       return response.json();
     }
 
-    function extractSongHistory(allHistory, songId) {
-      if (!allHistory || typeof allHistory !== "object") return [];
-      const rows = [];
-      for (const [date, day] of Object.entries(allHistory)) {
-        if (!day || typeof day !== "object") continue;
-        const record = day?.songs?.[songId];
-        if (!record || typeof record !== "object") continue;
-        const plays = Number(record.playCount);
-        if (!Number.isFinite(plays)) continue;
-        
-        const orderNum = Number(record.order);
-        const rank = Number.isFinite(orderNum) ? orderNum + 1 : null;
+    // analytics_history と daily_history を統合・マージする関数
+    function extractSongCombinedHistory(analyticsHistory, dailyHistory, songId) {
+      const combinedMap = new Map();
 
-        rows.push({
-          date,
-          plays,
-          rank,
-          totalWatchTime: Number(record.totalWatchTime),
-          timestamp: Number(day.timestamp)
-        });
+      // 1. analytics_history の抽出
+      if (analyticsHistory && typeof analyticsHistory === "object") {
+        for (const [date, day] of Object.entries(analyticsHistory)) {
+          if (!day || typeof day !== "object") continue;
+          const record = day?.songs?.[songId];
+          if (!record || typeof record !== "object") continue;
+          const plays = Number(record.playCount);
+          if (!Number.isFinite(plays)) continue;
+
+          const orderNum = Number(record.order);
+          const rank = Number.isFinite(orderNum) ? orderNum + 1 : null;
+
+          combinedMap.set(date, {
+            date,
+            plays,
+            rank,
+            totalWatchTime: Number(record.totalWatchTime),
+            timestamp: Number(day.timestamp) || 0,
+            sourceType: 'analytics' // YouTube Analytics由来
+          });
+        }
       }
+
+      // 2. daily_history の抽出（同一日付がある場合は daily_history で上書き）
+      if (dailyHistory && typeof dailyHistory === "object") {
+        for (const [date, day] of Object.entries(dailyHistory)) {
+          if (!day || typeof day !== "object") continue;
+          const record = day?.songs?.[songId];
+          if (!record || typeof record !== "object") continue;
+          const plays = Number(record.playCount);
+          if (!Number.isFinite(plays)) continue;
+
+          const orderNum = Number(record.order);
+          const rank = Number.isFinite(orderNum) ? orderNum + 1 : null;
+
+          combinedMap.set(date, {
+            date,
+            plays,
+            rank,
+            totalWatchTime: Number(record.totalWatchTime),
+            timestamp: Number(day.timestamp) || 0,
+            sourceType: 'daily' // NCS Player記録由来
+          });
+        }
+      }
+
+      const rows = Array.from(combinedMap.values());
       rows.sort((a, b) => a.date.localeCompare(b.date));
       return rows;
     }
@@ -739,7 +778,7 @@
 
       const table = document.createElement("table");
       table.className = "history-table";
-      table.innerHTML = `<thead><tr><th>Date</th><th>Play Count</th><th>Daily Change</th></tr></thead>`;
+      table.innerHTML = `<thead><tr><th>Date</th><th>Play Count</th><th>Daily Change</th><th>Source</th></tr></thead>`;
       const tbody = document.createElement("tbody");
 
       for (const row of recent) {
@@ -754,8 +793,12 @@
           deltaClass = delta > 0 ? "delta-up" : delta < 0 ? "delta-down" : "delta-none";
         }
 
+        const sourceBadge = row.sourceType === 'analytics'
+          ? '<span class="badge-source badge-analytics">Analytics</span>'
+          : '<span class="badge-source badge-daily">Player</span>';
+
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${escapeHtml(formatDate(row.date))}</td><td>${escapeHtml(formatNumber(row.plays))}</td><td class="${deltaClass}">${escapeHtml(deltaText)}</td>`;
+        tr.innerHTML = `<td>${escapeHtml(formatDate(row.date))}</td><td>${escapeHtml(formatNumber(row.plays))}</td><td class="${deltaClass}">${escapeHtml(deltaText)}</td><td>${sourceBadge}</td>`;
         tbody.appendChild(tr);
       }
       table.appendChild(tbody);
@@ -824,7 +867,7 @@
       rows.forEach((row, i) => {
         const c = document.createElementNS(svgNS, "circle");
         c.setAttribute("cx", xFor(i)); c.setAttribute("cy", yFor(row.plays)); c.setAttribute("r", rows.length > 60 ? "3" : "4.5");
-        c.setAttribute("fill", "#7dd3fc");
+        c.setAttribute("fill", row.sourceType === 'analytics' ? "#a78bfa" : "#7dd3fc");
         c.style.cursor = "pointer";
         c.addEventListener("mouseenter", () => showTooltip(i));
         c.addEventListener("mouseleave", hideTooltip);
@@ -848,7 +891,8 @@
 
       function showTooltip(i) {
         const row = rows[i];
-        tooltip.innerHTML = `<strong>${escapeHtml(formatNumber(row.plays))} plays</strong>${escapeHtml(formatDate(row.date))}`;
+        const srcTag = row.sourceType === 'analytics' ? ' [Analytics]' : ' [Player]';
+        tooltip.innerHTML = `<strong>${escapeHtml(formatNumber(row.plays))} plays</strong>${escapeHtml(formatDate(row.date))}${srcTag}`;
         tooltip.style.left = `${(xFor(i) / width) * 100}%`;
         tooltip.style.top = `${(yFor(row.plays) / height) * 100}%`;
         tooltip.classList.remove("hidden");
@@ -939,7 +983,7 @@
       validRows.forEach((row, i) => {
         const c = document.createElementNS(svgNS, "circle");
         c.setAttribute("cx", xFor(i)); c.setAttribute("cy", yFor(row.rank)); c.setAttribute("r", validRows.length > 60 ? "3" : "4.5");
-        c.setAttribute("fill", "#7dd3fc");
+        c.setAttribute("fill", row.sourceType === 'analytics' ? "#a78bfa" : "#7dd3fc");
         c.style.cursor = "pointer";
         c.addEventListener("mouseenter", () => showTooltip(i));
         c.addEventListener("mouseleave", hideTooltip);
@@ -1177,9 +1221,9 @@
         const latest = historyRows[historyRows.length - 1];
         const current = Number(song.playCount);
         if (Number.isFinite(current) && latest.plays !== current) {
-          $("historyNote").textContent = `The latest daily snapshot is ${formatNumber(latest.plays)} plays on ${formatDate(latest.date)}; the live song record is currently ${formatNumber(current)}. Daily history and live data can therefore differ until the next snapshot.`;
+          $("historyNote").textContent = `The latest snapshot is ${formatNumber(latest.plays)} plays on ${formatDate(latest.date)}; the live song record is currently ${formatNumber(current)}. History and live data can therefore differ until the next snapshot.`;
         } else {
-          $("historyNote").textContent = `The graph uses ${historyRows.length} stored daily snapshots for this song. Missing dates are left as gaps rather than being treated as zero plays.`;
+          $("historyNote").textContent = `The graph uses ${historyRows.length} stored snapshots from analytics_history & daily_history for this song. Missing dates are left as gaps rather than being treated as zero plays.`;
         }
       }
 
@@ -1193,19 +1237,22 @@
       const params = new URLSearchParams(location.search);
       const songId = forcedSongId || params.get("id") || DEFAULT_SONG_ID;
       try {
-        const [song, allHistory] = await Promise.all([
+        const [song, analyticsHistory, dailyHistory] = await Promise.all([
           fetchJson(`music_chart/songs/${encodeURIComponent(songId)}`),
+          fetchJson("music_chart/analytics_history"),
           fetchJson("music_chart/daily_history")
         ]);
+
         if (!song || typeof song !== "object") throw new Error("No song data was returned.");
-        const historyRows = extractSongHistory(allHistory, songId);
+
+        const historyRows = extractSongCombinedHistory(analyticsHistory, dailyHistory, songId);
         renderSong(song, songId, `${FIREBASE_BASE}/music_chart/songs/${encodeURIComponent(songId)}.json`, historyRows);
       } catch (error) {
         showError(
-          `Firebase RTDBから楽曲データまたは日次履歴を取得できませんでした。<br>` +
+          `Firebase RTDBから楽曲データまたは履歴を取得できませんでした。<br>` +
           `<small>${escapeHtml(error.message)}</small><br><br>` +
           `Song: <code>music_chart/songs/${escapeHtml(songId)}</code><br>` +
-          `History: <code>music_chart/daily_history</code>`
+          `History: <code>music_chart/analytics_history</code> + <code>music_chart/daily_history</code>`
         );
       }
     }
