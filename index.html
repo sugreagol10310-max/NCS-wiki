@@ -672,6 +672,34 @@
       return rows;
     }
 
+    // 日付の抜けを補完するヘルパー関数
+    function fillMissingDatesForRank(rows) {
+      if (!rows.length) return [];
+      const dataMap = new Map(rows.map(r => [r.date, r]));
+      const filled = [];
+      
+      const curr = new Date(`${rows[0].date}T00:00:00Z`);
+      const end = new Date(`${rows[rows.length - 1].date}T00:00:00Z`);
+
+      while (curr <= end) {
+        const dateStr = curr.toISOString().split('T')[0];
+        if (dataMap.has(dateStr)) {
+          filled.push(dataMap.get(dateStr));
+        } else {
+          filled.push({
+            date: dateStr,
+            plays: null,
+            rank: null,
+            totalWatchTime: null,
+            timestamp: curr.getTime(),
+            sourceType: 'filled'
+          });
+        }
+        curr.setUTCDate(curr.getUTCDate() + 1);
+      }
+      return filled;
+    }
+
     function formatDate(dateString) {
       const d = new Date(`${dateString}T00:00:00`);
       if (Number.isNaN(d.getTime())) return dateString;
@@ -847,16 +875,17 @@
       });
     }
 
-    // Chart.js: 好き度ランキング変遷グラフ（ズーム・パン対応）
+    // Chart.js: 好き度ランキング変遷グラフ（ズーム・パン対応・14日移動平均・日付補完）
     function renderRankChart(rows) {
-      const validRows = rows.filter(r => r.rank !== null && Number.isFinite(r.rank));
       if (rankChartInstance) { rankChartInstance.destroy(); rankChartInstance = null; }
 
+      // 日付の抜けを補完（中間データなしの日は rank=null）
+      const filledRows = fillMissingDatesForRank(rows);
       const ctx = $('rankChartCanvas').getContext('2d');
-      if (!validRows.length) return;
+      if (!filledRows.length) return;
 
-      const labels = validRows.map(r => formatDate(r.date));
-      const rankData = validRows.map(r => r.rank);
+      const labels = filledRows.map(r => formatDate(r.date));
+      const rankData = filledRows.map(r => r.rank);
 
       const datasets = [{
         label: '好き度順位',
@@ -864,25 +893,36 @@
         borderColor: '#7dd3fc',
         backgroundColor: '#7dd3fc',
         borderWidth: 2,
-        pointRadius: validRows.length > 60 ? 2 : 4,
+        pointRadius: (ctx) => {
+          const val = ctx.dataset.data[ctx.dataIndex];
+          return val === null ? 0 : (filledRows.length > 60 ? 2 : 4);
+        },
         pointHoverRadius: 6,
-        tension: 0.1
+        tension: 0.1,
+        spanGaps: true // nullの期間をスキップして直線で結ぶ
       }];
 
-      if (showMovingAverage && validRows.length >= 3) {
-        const maData = validRows.map((_, i) => {
-          if (i < 2) return null;
-          return (validRows[i].rank + validRows[i - 1].rank + validRows[i - 2].rank) / 3;
+      // 14日移動平均線の計算
+      const windowSize = 14;
+      if (showMovingAverage && filledRows.length >= windowSize) {
+        const maData = filledRows.map((_, i) => {
+          if (i < windowSize - 1) return null;
+          const slice = filledRows.slice(i - windowSize + 1, i + 1);
+          const validRanks = slice.map(r => r.rank).filter(r => r !== null && Number.isFinite(r));
+          if (validRanks.length === 0) return null;
+          const sum = validRanks.reduce((a, b) => a + b, 0);
+          return sum / validRanks.length;
         });
 
         datasets.push({
-          label: '3日移動平均',
+          label: '14日移動平均',
           data: maData,
           borderColor: '#a78bfa',
           borderDash: [5, 5],
           borderWidth: 2,
           pointRadius: 0,
-          tension: 0.2
+          tension: 0.2,
+          spanGaps: true
         });
       }
 
@@ -902,7 +942,10 @@
             },
             tooltip: {
               callbacks: {
-                label: (ctx) => ` ${ctx.dataset.label}: #${formatNumber(ctx.raw)}位`
+                label: (ctx) => {
+                  if (ctx.raw === null || ctx.raw === undefined) return null;
+                  return ` ${ctx.dataset.label}: #${formatNumber(Math.round(ctx.raw * 10) / 10)}位`;
+                }
               }
             },
             zoom: {
