@@ -4,6 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NCS Wiki — Song · MVP-3'</title>
+  
+  <!-- Chart.js & Zoom Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
   <style>
     :root {
       color-scheme: dark;
@@ -79,7 +85,6 @@
     }
     .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
     .value { font-size: 24px; font-weight: 750; margin-top: 4px; }
-    .value.small { font-size: 17px; }
 
     .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
     .tag {
@@ -135,32 +140,13 @@
     .chart-box {
       position: relative;
       width: 100%;
-      min-height: 320px;
+      height: 360px;
       background: rgba(255,255,255,.02);
       border: 1px solid rgba(255,255,255,.07);
       border-radius: 16px;
-      overflow: hidden;
+      padding: 12px;
     }
-    .chart-svg { display: block; width: 100%; height: 360px; }
-    .chart-tooltip {
-      position: absolute;
-      pointer-events: none;
-      min-width: 150px;
-      padding: 10px 12px;
-      background: rgba(8, 12, 18, .96);
-      border: 1px solid #344054;
-      border-radius: 12px;
-      box-shadow: 0 12px 40px rgba(0,0,0,.35);
-      font-size: 12px;
-      line-height: 1.5;
-      transform: translate(-50%, calc(-100% - 10px));
-      z-index: 5;
-    }
-    .chart-tooltip strong { display:block; font-size:13px; color:#f8fafc; }
-    .chart-empty { min-height: 320px; display:grid; place-items:center; color:var(--muted); padding:30px; text-align:center; }
-    .chart-legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; color:var(--muted); font-size:12px; }
-    .legend-dot { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:6px; background:var(--accent); }
-    .legend-dot.ma { background: var(--accent-2); }
+    .chart-empty { height: 100%; display:grid; place-items:center; color:var(--muted); text-align:center; }
     
     .stats-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:14px; }
     .mini-stat { padding:14px; background:rgba(255,255,255,.025); border-radius:14px; border:1px solid rgba(255,255,255,.05); }
@@ -198,13 +184,6 @@
       border: 1px solid rgba(255,255,255,.09);
       box-shadow: 0 14px 36px rgba(0,0,0,.28);
     }
-    .thumb-wrap::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgba(255,255,255,.08), transparent 45%);
-      pointer-events: none;
-    }
     .thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
     .thumb-fallback { display:grid; place-items:center; height:100%; color:var(--muted); font-size:12px; padding:12px; text-align:center; }
     .hero-copy { min-width: 0; }
@@ -230,7 +209,7 @@
     .milestone-card .m-value { font-size:19px; font-weight:800; }
     .milestone-card .m-status { margin-top:4px; font-size:11px; color:var(--muted); line-height:1.5; }
 
-    .hidden { display: none; }
+    .hidden { display: none !important; }
 
     .search-panel {
       margin-bottom: 22px;
@@ -288,7 +267,6 @@
       .hero-main { grid-template-columns: 1fr; }
       .thumb-wrap { max-width: 520px; margin: 0 auto; }
       .milestones-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .chart-svg { height: 300px; }
       .history-table { font-size: 12px; }
       .history-table th:nth-child(3), .history-table td:nth-child(3) { display: none; }
     }
@@ -370,19 +348,20 @@
       <!-- 1 & 4. 視聴回数変遷 ＆ 予測機能 -->
       <section class="section">
         <div class="section-card">
-          <h2>Play Count History</h2>
+          <div class="section-header-flex">
+            <h2>Play Count History</h2>
+            <button id="resetPlayZoomBtn" class="btn" type="button">ズームリセット</button>
+          </div>
           <div class="stats-grid">
             <div class="mini-stat"><div class="label">Observations</div><div class="num" id="observationCount">—</div><div class="hint" id="observationRange">—</div></div>
             <div class="mini-stat"><div class="label">Largest Daily Increase</div><div class="num" id="maxDailyIncrease">—</div><div class="hint" id="maxDailyIncreaseDate">—</div></div>
             <div class="mini-stat"><div class="label">Latest Snapshot</div><div class="num" id="latestSnapshot">—</div><div class="hint" id="latestSnapshotDate">—</div></div>
-            <!-- 機能4: 1ヶ月後予測数字 -->
             <div class="mini-stat highlight"><div class="label">1ヶ月後の予測視聴回数</div><div class="num" id="predictedPlays">—</div><div class="hint">トレンドライン予測 (+30日)</div></div>
           </div>
-          <div class="chart-box" id="chartBox">
-            <div class="chart-empty" id="chartEmpty">Loading daily history…</div>
+          <div class="chart-box">
+            <canvas id="playChartCanvas"></canvas>
           </div>
-          <div class="chart-legend"><span><span class="legend-dot"></span>Observed cumulative plays</span><span>Y軸の下限は0固定</span></div>
-          <div class="note" id="historyNote">The graph uses stored snapshots from <code>analytics_history</code> and <code>daily_history</code>.</div>
+          <div class="note" id="historyNote">The graph uses stored snapshots from <code>analytics_history</code> and <code>daily_history</code>. (ホイールスクロールやドラッグで拡大・縮小・移動が可能です)</div>
         </div>
       </section>
 
@@ -391,15 +370,15 @@
         <div class="section-card">
           <div class="section-header-flex">
             <h2>好き度ランキング変遷</h2>
-            <button id="toggleMaBtn" class="btn" type="button">移動平均線: ON</button>
+            <div style="display:flex; gap:8px;">
+              <button id="resetRankZoomBtn" class="btn" type="button">ズームリセット</button>
+              <button id="toggleMaBtn" class="btn" type="button">移動平均線: ON</button>
+            </div>
           </div>
-          <div class="chart-box" id="rankChartBox">
-            <div class="chart-empty" id="rankChartEmpty">Loading rank history…</div>
+          <div class="chart-box">
+            <canvas id="rankChartCanvas"></canvas>
           </div>
-          <div class="chart-legend">
-            <span><span class="legend-dot"></span>好き度順位 (1位が最上位)</span>
-            <span id="maLegend"><span class="legend-dot ma"></span>3日移動平均</span>
-          </div>
+          <div class="note">好き度順位の変遷グラフです。(1位が最上位。ホイールスクロールやドラッグで拡大・縮小・移動が可能です)</div>
         </div>
       </section>
 
@@ -449,6 +428,9 @@
     let playRankMap = {};
     let currentHistoryRows = [];
     let showMovingAverage = true;
+
+    let playChartInstance = null;
+    let rankChartInstance = null;
 
     const $ = (id) => document.getElementById(id);
 
@@ -645,42 +627,42 @@
           if (!day || typeof day !== "object") continue;
           const record = day?.songs?.[songId];
           if (!record || typeof record !== "object") continue;
-          const plays = Number(record.playCount);
-          if (!Number.isFinite(plays)) continue;
 
+          const plays = Number(record.playCount);
           const orderNum = Number(record.order);
           const rank = Number.isFinite(orderNum) ? orderNum + 1 : null;
 
           combinedMap.set(date, {
             date,
-            plays,
-            rank,
+            plays: Number.isFinite(plays) ? plays : null,
+            rank: rank,
             totalWatchTime: Number(record.totalWatchTime),
             timestamp: Number(day.timestamp) || 0,
-            sourceType: 'analytics' // YouTube Analytics由来
+            sourceType: 'analytics'
           });
         }
       }
 
-      // 2. daily_history の抽出（同一日付がある場合は daily_history で上書き）
+      // 2. daily_history の抽出（同一日付がある場合はマージまたは上書き）
       if (dailyHistory && typeof dailyHistory === "object") {
         for (const [date, day] of Object.entries(dailyHistory)) {
           if (!day || typeof day !== "object") continue;
           const record = day?.songs?.[songId];
           if (!record || typeof record !== "object") continue;
-          const plays = Number(record.playCount);
-          if (!Number.isFinite(plays)) continue;
 
+          const plays = Number(record.playCount);
           const orderNum = Number(record.order);
           const rank = Number.isFinite(orderNum) ? orderNum + 1 : null;
 
+          const existing = combinedMap.get(date) || {};
+
           combinedMap.set(date, {
             date,
-            plays,
-            rank,
-            totalWatchTime: Number(record.totalWatchTime),
-            timestamp: Number(day.timestamp) || 0,
-            sourceType: 'daily' // NCS Player記録由来
+            plays: Number.isFinite(plays) ? plays : (existing.plays ?? null),
+            rank: rank !== null ? rank : (existing.rank ?? null),
+            totalWatchTime: Number(record.totalWatchTime) || (existing.totalWatchTime ?? null),
+            timestamp: Number(day.timestamp) || (existing.timestamp ?? 0),
+            sourceType: 'daily'
           });
         }
       }
@@ -702,12 +684,12 @@
       return Math.round((db - da) / 86400000);
     }
 
-    // 機能4: 1ヶ月後の予測数値計算 (最小二乗法)
     function predictFuturePlays(rows) {
-      if (rows.length < 2) return "—";
+      const validRows = rows.filter(r => r.plays !== null);
+      if (validRows.length < 2) return "—";
       
-      const firstDate = new Date(`${rows[0].date}T00:00:00Z`);
-      const points = rows.map(r => {
+      const firstDate = new Date(`${validRows[0].date}T00:00:00Z`);
+      const points = validRows.map(r => {
         const d = new Date(`${r.date}T00:00:00Z`);
         const x = Math.round((d - firstDate) / 86400000);
         return { x, y: r.plays };
@@ -728,7 +710,6 @@
       const slope = (n * sumXY - sumX * sumY) / denominator;
       const intercept = (sumY - slope * sumX) / n;
 
-      // 最終日から30日後
       const lastX = points[points.length - 1].x;
       const targetX = lastX + 30;
       const predicted = Math.max(points[points.length - 1].y, Math.round(slope * targetX + intercept));
@@ -737,7 +718,8 @@
     }
 
     function renderHistorySummary(rows) {
-      if (!rows.length) {
+      const validRows = rows.filter(r => r.plays !== null);
+      if (!validRows.length) {
         $("observationCount").textContent = "0";
         $("observationRange").textContent = "No stored snapshots";
         $("maxDailyIncrease").textContent = "—";
@@ -749,28 +731,27 @@
       }
 
       let maxIncrease = null;
-      for (let i = 1; i < rows.length; i++) {
-        const gapDays = daysBetween(rows[i - 1].date, rows[i].date);
+      for (let i = 1; i < validRows.length; i++) {
+        const gapDays = daysBetween(validRows[i - 1].date, validRows[i].date);
         if (gapDays !== 1) continue;
-        const delta = rows[i].plays - rows[i - 1].plays;
+        const delta = validRows[i].plays - validRows[i - 1].plays;
         if (!maxIncrease || delta > maxIncrease.delta) {
-          maxIncrease = { delta, date: rows[i].date };
+          maxIncrease = { delta, date: validRows[i].date };
         }
       }
 
-      $("observationCount").textContent = formatNumber(rows.length);
-      $("observationRange").textContent = `${formatDate(rows[0].date)} → ${formatDate(rows[rows.length - 1].date)}`;
+      $("observationCount").textContent = formatNumber(validRows.length);
+      $("observationRange").textContent = `${formatDate(validRows[0].date)} → ${formatDate(validRows[validRows.length - 1].date)}`;
       $("maxDailyIncrease").textContent = maxIncrease ? `${maxIncrease.delta >= 0 ? '+' : ''}${formatNumber(maxIncrease.delta)}` : "—";
       $("maxDailyIncreaseDate").textContent = maxIncrease ? formatDate(maxIncrease.date) : "Not enough consecutive daily data";
-      $("latestSnapshot").textContent = formatNumber(rows[rows.length - 1].plays);
-      $("latestSnapshotDate").textContent = formatDate(rows[rows.length - 1].date);
-      
-      // 機能4の値を反映
+      $("latestSnapshot").textContent = formatNumber(validRows[validRows.length - 1].plays);
+      $("latestSnapshotDate").textContent = formatDate(validRows[validRows.length - 1].date);
       $("predictedPlays").textContent = predictFuturePlays(rows);
     }
 
     function renderRecentHistory(rows) {
-      const recent = rows.slice(-10).reverse();
+      const validRows = rows.filter(r => r.plays !== null);
+      const recent = validRows.slice(-10).reverse();
       if (!recent.length) {
         $("historyTableWrap").textContent = "No history is available for this song.";
         return;
@@ -782,8 +763,8 @@
       const tbody = document.createElement("tbody");
 
       for (const row of recent) {
-        const originalIndex = rows.indexOf(row);
-        const prev = originalIndex > 0 ? rows[originalIndex - 1] : null;
+        const originalIndex = validRows.indexOf(row);
+        const prev = originalIndex > 0 ? validRows[originalIndex - 1] : null;
         const consecutive = prev && daysBetween(prev.date, row.date) === 1;
         let deltaText = "—";
         let deltaClass = "delta-none";
@@ -806,216 +787,148 @@
       wrap.replaceChildren(table);
     }
 
-    // 機能1: 視聴回数グラフ (Y軸0固定)
+    // Chart.js: 視聴回数グラフ（ズーム・パン対応）
     function renderChart(rows) {
-      const box = $("chartBox");
-      box.replaceChildren();
-      if (!rows.length) {
-        box.innerHTML = '<div class="chart-empty">No daily history was found for this song.</div>';
-        return;
-      }
+      const validRows = rows.filter(r => r.plays !== null);
+      if (playChartInstance) { playChartInstance.destroy(); playChartInstance = null; }
 
-      const width = 1000;
-      const height = 360;
-      const pad = { left: 58, right: 20, top: 24, bottom: 42 };
-      const innerW = width - pad.left - pad.right;
-      const innerH = height - pad.top - pad.bottom;
-      
-      // 機能1: Y軸の最小値を強制的に0にする
-      const minY = 0;
-      const maxY = Math.max(10, Math.max(...rows.map(r => r.plays)));
-      const ySpan = maxY - minY;
+      const ctx = $('playChartCanvas').getContext('2d');
+      if (!validRows.length) return;
 
-      const xFor = i => rows.length === 1 ? pad.left + innerW / 2 : pad.left + (i / (rows.length - 1)) * innerW;
-      const yFor = v => pad.top + (1 - ((v - minY) / ySpan)) * innerH;
+      const labels = validRows.map(r => formatDate(r.date));
+      const data = validRows.map(r => r.plays);
 
-      const svgNS = "http://www.w3.org/2000/svg";
-      const svg = document.createElementNS(svgNS, "svg");
-      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      svg.setAttribute("class", "chart-svg");
-      svg.setAttribute("role", "img");
-
-      const addLine = (x1, y1, x2, y2, stroke, opacity="1", dash="") => {
-        const el = document.createElementNS(svgNS, "line");
-        el.setAttribute("x1", x1); el.setAttribute("y1", y1); el.setAttribute("x2", x2); el.setAttribute("y2", y2);
-        el.setAttribute("stroke", stroke); el.setAttribute("stroke-opacity", opacity);
-        if (dash) el.setAttribute("stroke-dasharray", dash);
-        el.setAttribute("stroke-width", "1.5");
-        svg.appendChild(el);
-      };
-
-      const addText = (x, y, text, anchor="start") => {
-        const el = document.createElementNS(svgNS, "text");
-        el.setAttribute("x", x); el.setAttribute("y", y); el.setAttribute("fill", "#98a2b3");
-        el.setAttribute("font-size", "11"); el.setAttribute("text-anchor", anchor); el.textContent = text;
-        svg.appendChild(el);
-      };
-
-      const tickCount = 5;
-      for (let i = 0; i <= tickCount; i++) {
-        const value = minY + (ySpan * i / tickCount);
-        const y = yFor(value);
-        addLine(pad.left, y, width - pad.right, y, "#334155", "0.5");
-        addText(pad.left - 8, y + 4, formatNumber(Math.round(value)), "end");
-      }
-
-      for (let i = 1; i < rows.length; i++) {
-        if (daysBetween(rows[i - 1].date, rows[i].date) !== 1) continue;
-        addLine(xFor(i - 1), yFor(rows[i - 1].plays), xFor(i), yFor(rows[i].plays), "#7dd3fc", "0.95");
-      }
-
-      rows.forEach((row, i) => {
-        const c = document.createElementNS(svgNS, "circle");
-        c.setAttribute("cx", xFor(i)); c.setAttribute("cy", yFor(row.plays)); c.setAttribute("r", rows.length > 60 ? "3" : "4.5");
-        c.setAttribute("fill", row.sourceType === 'analytics' ? "#a78bfa" : "#7dd3fc");
-        c.style.cursor = "pointer";
-        c.addEventListener("mouseenter", () => showTooltip(i));
-        c.addEventListener("mouseleave", hideTooltip);
-        svg.appendChild(c);
-      });
-
-      const labelIndexes = rows.length <= 8
-        ? rows.map((_, i) => i)
-        : [0, Math.floor((rows.length - 1) / 2), rows.length - 1];
-      const uniqueIndexes = [...new Set(labelIndexes)];
-      for (const i of uniqueIndexes) {
-        addText(xFor(i), height - 14, formatDate(rows[i].date), i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle");
-      }
-
-      box.appendChild(svg);
-
-      const tooltip = document.createElement("div");
-      tooltip.className = "chart-tooltip hidden";
-      tooltip.id = "chartTooltip";
-      box.appendChild(tooltip);
-
-      function showTooltip(i) {
-        const row = rows[i];
-        const srcTag = row.sourceType === 'analytics' ? ' [Analytics]' : ' [Player]';
-        tooltip.innerHTML = `<strong>${escapeHtml(formatNumber(row.plays))} plays</strong>${escapeHtml(formatDate(row.date))}${srcTag}`;
-        tooltip.style.left = `${(xFor(i) / width) * 100}%`;
-        tooltip.style.top = `${(yFor(row.plays) / height) * 100}%`;
-        tooltip.classList.remove("hidden");
-      }
-      function hideTooltip() { tooltip.classList.add("hidden"); }
-    }
-
-    // 機能3: 好き度ランキング変遷グラフ & 移動平均線
-    function renderRankChart(rows) {
-      const box = $("rankChartBox");
-      box.replaceChildren();
-      
-      const validRows = rows.filter(r => r.rank !== null && Number.isFinite(r.rank));
-      if (!validRows.length) {
-        box.innerHTML = '<div class="chart-empty">No rank history available.</div>';
-        return;
-      }
-
-      const width = 1000;
-      const height = 360;
-      const pad = { left: 58, right: 20, top: 24, bottom: 42 };
-      const innerW = width - pad.left - pad.right;
-      const innerH = height - pad.top - pad.bottom;
-
-      const ranks = validRows.map(r => r.rank);
-      let minRank = Math.min(...ranks);
-      let maxRank = Math.max(...ranks);
-      if (minRank === maxRank) { minRank = Math.max(1, minRank - 2); maxRank = maxRank + 2; }
-
-      const xFor = i => validRows.length === 1 ? pad.left + innerW / 2 : pad.left + (i / (validRows.length - 1)) * innerW;
-      // ランキングは1位が上に来るように反転させる (minRankが上、maxRankが下)
-      const yFor = v => pad.top + ((v - minRank) / (maxRank - minRank)) * innerH;
-
-      const svgNS = "http://www.w3.org/2000/svg";
-      const svg = document.createElementNS(svgNS, "svg");
-      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-      svg.setAttribute("class", "chart-svg");
-
-      const addLine = (x1, y1, x2, y2, stroke, opacity="1", dash="", widthStr="1.5") => {
-        const el = document.createElementNS(svgNS, "line");
-        el.setAttribute("x1", x1); el.setAttribute("y1", y1); el.setAttribute("x2", x2); el.setAttribute("y2", y2);
-        el.setAttribute("stroke", stroke); el.setAttribute("stroke-opacity", opacity);
-        if (dash) el.setAttribute("stroke-dasharray", dash);
-        el.setAttribute("stroke-width", widthStr);
-        svg.appendChild(el);
-      };
-
-      const addText = (x, y, text, anchor="start") => {
-        const el = document.createElementNS(svgNS, "text");
-        el.setAttribute("x", x); el.setAttribute("y", y); el.setAttribute("fill", "#98a2b3");
-        el.setAttribute("font-size", "11"); el.setAttribute("text-anchor", anchor); el.textContent = text;
-        svg.appendChild(el);
-      };
-
-      // Y軸グリッド (順位)
-      const tickCount = Math.min(5, maxRank - minRank);
-      for (let i = 0; i <= tickCount; i++) {
-        const value = Math.round(minRank + ((maxRank - minRank) * i / tickCount));
-        const y = yFor(value);
-        addLine(pad.left, y, width - pad.right, y, "#334155", "0.5");
-        addText(pad.left - 8, y + 4, `#${value}`, "end");
-      }
-
-      // 好き度ランキング折れ線
-      for (let i = 1; i < validRows.length; i++) {
-        if (daysBetween(validRows[i - 1].date, validRows[i].date) !== 1) continue;
-        addLine(xFor(i - 1), yFor(validRows[i - 1].rank), xFor(i), yFor(validRows[i].rank), "#7dd3fc", "0.95");
-      }
-
-      // 移動平均線（3日移動平均）
-      if (showMovingAverage && validRows.length >= 3) {
-        const maPoints = [];
-        for (let i = 0; i < validRows.length; i++) {
-          if (i < 2) { maPoints.push(null); continue; }
-          const avg = (validRows[i].rank + validRows[i - 1].rank + validRows[i - 2].rank) / 3;
-          maPoints.push(avg);
-        }
-
-        for (let i = 1; i < validRows.length; i++) {
-          if (maPoints[i - 1] !== null && maPoints[i] !== null) {
-            if (daysBetween(validRows[i - 1].date, validRows[i].date) !== 1) continue;
-            addLine(xFor(i - 1), yFor(maPoints[i - 1]), xFor(i), yFor(maPoints[i]), "#a78bfa", "0.85", "4 4", "2");
+      playChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '視聴回数',
+            data: data,
+            borderColor: '#7dd3fc',
+            backgroundColor: 'rgba(125, 211, 252, 0.1)',
+            borderWidth: 2,
+            pointRadius: validRows.length > 60 ? 2 : 4,
+            pointHoverRadius: 6,
+            fill: true,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` 視聴回数: ${formatNumber(ctx.raw)}`
+              }
+            },
+            zoom: {
+              pan: { enabled: true, mode: 'x' },
+              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#98a2b3' }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#98a2b3',
+                callback: (val) => formatNumber(val)
+              }
+            }
           }
         }
-      }
-
-      // データポイント
-      validRows.forEach((row, i) => {
-        const c = document.createElementNS(svgNS, "circle");
-        c.setAttribute("cx", xFor(i)); c.setAttribute("cy", yFor(row.rank)); c.setAttribute("r", validRows.length > 60 ? "3" : "4.5");
-        c.setAttribute("fill", row.sourceType === 'analytics' ? "#a78bfa" : "#7dd3fc");
-        c.style.cursor = "pointer";
-        c.addEventListener("mouseenter", () => showTooltip(i));
-        c.addEventListener("mouseleave", hideTooltip);
-        svg.appendChild(c);
       });
-
-      const labelIndexes = validRows.length <= 8
-        ? validRows.map((_, i) => i)
-        : [0, Math.floor((validRows.length - 1) / 2), validRows.length - 1];
-      const uniqueIndexes = [...new Set(labelIndexes)];
-      for (const i of uniqueIndexes) {
-        addText(xFor(i), height - 14, formatDate(validRows[i].date), i === 0 ? "start" : i === validRows.length - 1 ? "end" : "middle");
-      }
-
-      box.appendChild(svg);
-
-      const tooltip = document.createElement("div");
-      tooltip.className = "chart-tooltip hidden";
-      tooltip.id = "rankChartTooltip";
-      box.appendChild(tooltip);
-
-      function showTooltip(i) {
-        const row = validRows[i];
-        tooltip.innerHTML = `<strong>#${escapeHtml(formatNumber(row.rank))}位</strong>${escapeHtml(formatDate(row.date))}`;
-        tooltip.style.left = `${(xFor(i) / width) * 100}%`;
-        tooltip.style.top = `${(yFor(row.rank) / height) * 100}%`;
-        tooltip.classList.remove("hidden");
-      }
-      function hideTooltip() { tooltip.classList.add("hidden"); }
     }
 
-    // 機能2: 新しいマイルストーン定義 (回数 & 時間)
+    // Chart.js: 好き度ランキング変遷グラフ（ズーム・パン対応）
+    function renderRankChart(rows) {
+      const validRows = rows.filter(r => r.rank !== null && Number.isFinite(r.rank));
+      if (rankChartInstance) { rankChartInstance.destroy(); rankChartInstance = null; }
+
+      const ctx = $('rankChartCanvas').getContext('2d');
+      if (!validRows.length) return;
+
+      const labels = validRows.map(r => formatDate(r.date));
+      const rankData = validRows.map(r => r.rank);
+
+      const datasets = [{
+        label: '好き度順位',
+        data: rankData,
+        borderColor: '#7dd3fc',
+        backgroundColor: '#7dd3fc',
+        borderWidth: 2,
+        pointRadius: validRows.length > 60 ? 2 : 4,
+        pointHoverRadius: 6,
+        tension: 0.1
+      }];
+
+      if (showMovingAverage && validRows.length >= 3) {
+        const maData = validRows.map((_, i) => {
+          if (i < 2) return null;
+          return (validRows[i].rank + validRows[i - 1].rank + validRows[i - 2].rank) / 3;
+        });
+
+        datasets.push({
+          label: '3日移動平均',
+          data: maData,
+          borderColor: '#a78bfa',
+          borderDash: [5, 5],
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.2
+        });
+      }
+
+      rankChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              labels: { color: '#98a2b3' }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: #${formatNumber(ctx.raw)}位`
+              }
+            },
+            zoom: {
+              pan: { enabled: true, mode: 'x' },
+              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#98a2b3' }
+            },
+            y: {
+              reverse: true, // 1位を上にするために反転
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#98a2b3',
+                stepSize: 1,
+                callback: (val) => `#${formatNumber(val)}`
+              }
+            }
+          }
+        }
+      });
+    }
+
     const PLAY_MILESTONES = [10, 20, 50, 100, 200, 300, 400, 500];
     const TIME_MILESTONES = [
       { label: "1時間", seconds: 3600 },
@@ -1026,14 +939,15 @@
     ];
 
     function getMilestoneState(milestone, currentPlays, rows) {
+      const validRows = rows.filter(r => r.plays !== null);
       const achievedNow = Number.isFinite(currentPlays) && currentPlays >= milestone;
       let observed = null;
       let previous = null;
 
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i].plays >= milestone) {
-          observed = rows[i];
-          previous = i > 0 ? rows[i - 1] : null;
+      for (let i = 0; i < validRows.length; i++) {
+        if (validRows[i].plays >= milestone) {
+          observed = validRows[i];
+          previous = i > 0 ? validRows[i - 1] : null;
           break;
         }
       }
@@ -1078,12 +992,10 @@
     function renderMilestones(song, rows) {
       const currentPlays = Number(song.playCount);
       const songDuration = Number(song.duration) || 0;
-      // 総視聴時間が数値で存在しない場合は (再生回数 × 曲長) で補正
       const currentWatchTime = Number.isFinite(Number(song.totalWatchTime)) 
         ? Number(song.totalWatchTime) 
         : currentPlays * songDuration;
 
-      // 回数ベース
       const playGrid = $("playMilestonesGrid");
       playGrid.replaceChildren();
       for (const milestone of PLAY_MILESTONES) {
@@ -1094,7 +1006,6 @@
         playGrid.appendChild(card);
       }
 
-      // 時間ベース
       const timeGrid = $("timeMilestonesGrid");
       timeGrid.replaceChildren();
       for (const item of TIME_MILESTONES) {
@@ -1107,6 +1018,7 @@
     }
 
     function renderCongrats(song, rows) {
+      const validRows = rows.filter(r => r.plays !== null);
       const current = Number(song.playCount);
       const candidates = PLAY_MILESTONES.filter(n => Number.isFinite(current) && current >= n);
       const box = $("congrats");
@@ -1115,8 +1027,8 @@
       if (!candidates.length) return;
 
       const reached = candidates[candidates.length - 1];
-      const latestRow = rows.length ? rows[rows.length - 1] : null;
-      const exactObserved = rows.some(r => r.plays >= reached);
+      const latestRow = validRows.length ? validRows[validRows.length - 1] : null;
+      const exactObserved = validRows.some(r => r.plays >= reached);
       const isLiveAhead = latestRow && current > latestRow.plays && current >= reached && !exactObserved;
 
       const title = document.createElement('div');
@@ -1129,7 +1041,7 @@
       if (isLiveAhead) {
         sub.textContent = `The live Firebase value has reached ${formatNumber(current)} plays. The daily snapshot has not recorded this milestone yet.`;
       } else {
-        const state = getMilestoneState(reached, current, rows);
+        const state = getMilestoneState(reached, current, validRows);
         sub.textContent = state.detail || 'This milestone is recorded in the available history.';
       }
       box.appendChild(sub);
@@ -1217,13 +1129,14 @@
       renderRecentHistory(historyRows);
       renderMilestones(song, historyRows);
 
-      if (historyRows.length) {
-        const latest = historyRows[historyRows.length - 1];
+      const validRows = historyRows.filter(r => r.plays !== null);
+      if (validRows.length) {
+        const latest = validRows[validRows.length - 1];
         const current = Number(song.playCount);
         if (Number.isFinite(current) && latest.plays !== current) {
           $("historyNote").textContent = `The latest snapshot is ${formatNumber(latest.plays)} plays on ${formatDate(latest.date)}; the live song record is currently ${formatNumber(current)}. History and live data can therefore differ until the next snapshot.`;
         } else {
-          $("historyNote").textContent = `The graph uses ${historyRows.length} stored snapshots from analytics_history & daily_history for this song. Missing dates are left as gaps rather than being treated as zero plays.`;
+          $("historyNote").textContent = `The graph uses ${validRows.length} stored snapshots from analytics_history & daily_history for this song. Missing dates are left as gaps rather than being treated as zero plays.`;
         }
       }
 
@@ -1257,7 +1170,6 @@
       }
     }
 
-    // イベントリスナー設定
     $("songSearch").addEventListener("input", (event) => renderSearchResults(event.target.value));
     $("clearSearch").addEventListener("click", () => {
       $("songSearch").value = "";
@@ -1265,12 +1177,18 @@
       $("songSearch").focus();
     });
 
-    // 移動平均トグルボタン
     $("toggleMaBtn").addEventListener("click", () => {
       showMovingAverage = !showMovingAverage;
       $("toggleMaBtn").textContent = `移動平均線: ${showMovingAverage ? "ON" : "OFF"}`;
-      $("maLegend").style.display = showMovingAverage ? "inline-block" : "none";
       renderRankChart(currentHistoryRows);
+    });
+
+    $("resetPlayZoomBtn").addEventListener("click", () => {
+      if (playChartInstance) playChartInstance.resetZoom();
+    });
+
+    $("resetRankZoomBtn").addEventListener("click", () => {
+      if (rankChartInstance) rankChartInstance.resetZoom();
     });
 
     window.addEventListener("popstate", () => loadSong());
