@@ -26,7 +26,7 @@ main{max-width:1250px;margin:0 auto;padding:24px}
 .metric-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .metric{font-size:30px;font-weight:800;margin-top:7px}
 section{margin-top:24px}
-.section-title{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:12px}
+.section-title{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
 h2{font-size:20px;margin:0}.hint{font-size:12px;color:var(--muted)}
 .rank-table{width:100%;border-collapse:collapse}.rank-table th,.rank-table td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left}
 .rank-table th{font-size:12px;color:var(--muted);font-weight:600}.rank-table td{font-size:14px}
@@ -59,6 +59,14 @@ input[type=range]{width:min(600px,70vw)}
 .btn-copy:active{transform:scale(0.95)}
 .tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;background:#ffffff10;color:var(--muted);margin-left:6px}
 
+/* 追加日リスト用スタイル */
+.added-date-item { display:flex; align-items:center; gap:14px; background:#ffffff05; padding:10px 12px; border-radius:12px; border:1px solid var(--line); }
+.added-date-thumb { width:80px; height:45px; object-fit:cover; border-radius:6px; background:#1a202c; flex-shrink:0; }
+.added-date-main { flex:1; min-width:0; }
+.added-date-title { font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.added-date-meta { font-size:12px; color:var(--muted); margin-top:4px; }
+.toggle-label { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text); cursor:pointer; background:var(--panel2); border:1px solid var(--line); padding:6px 12px; border-radius:8px; }
+
 @media(max-width:900px){
   .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .two-col{grid-template-columns:1fr}
@@ -89,6 +97,19 @@ input[type=range]{width:min(600px,70vw)}
   <div class="card"><div class="metric-label">総視聴時間</div><div class="metric" id="totalTime">—</div></div>
   <div class="card"><div class="metric-label">記録日数</div><div class="metric" id="dayCount">—</div></div>
 </div>
+
+<!-- 楽曲追加日・世代日リスト (NEW) -->
+<section>
+  <div class="section-title">
+    <h2>📅 楽曲追加日・世代日リスト</h2>
+    <div>
+      <label class="toggle-label"><input type="checkbox" id="toggleGeneration" checked> 世代日も表示</label>
+    </div>
+  </div>
+  <div class="card" style="max-height: 550px; overflow-y: auto;">
+    <div id="addedDatesList" style="display:flex; flex-direction:column; gap:10px;"></div>
+  </div>
+</section>
 
 <!-- 視聴回数 TOP50 -->
 <section>
@@ -386,6 +407,143 @@ function renderChampions(){
   `).join(""):`<div class="empty">order=0 の履歴がまだありません。</div>`;
 }
 
+/* 6. 追加日・世代日リストの処理 */
+function calculateAddedAndGenerationDates() {
+  const allIds = Object.keys(songs);
+  
+  // 日ごとの全体再生回数を計算
+  const totalPlaysPerDate = {};
+  for(let i = 0; i < dates.length; i++) {
+    const d = dates[i];
+    let total = 0;
+    const dayData = history[d];
+    if(dayData) {
+      for(const id of allIds) {
+        total += (dayData[id]?.playCount || 0);
+      }
+    }
+    totalPlaysPerDate[d] = total;
+  }
+
+  const results = [];
+
+  for (const id of allIds) {
+    const song = songs[id];
+    let addedDate = null;
+    let addedIndex = -1;
+
+    // 条件1 & 2: 追加日を特定（playCount > 0 または order が記録された最初の日）
+    for(let i = 0; i < dates.length; i++) {
+      const d = dates[i];
+      const data = history[d]?.[id];
+      if(data) {
+        if((data.playCount && data.playCount > 0) || (data.order !== null && data.order !== undefined)) {
+          addedDate = d;
+          addedIndex = i;
+          break;
+        }
+      }
+    }
+
+    if(!addedDate) continue; // 記録が一切ない曲はスキップ
+
+    const generationDates = [];
+    
+    // 特定の日から3日間の増加割合（曲の増加量 / 全体の増加量）を計算する関数
+    const getDeltaRatio = (startIndex) => {
+      if(startIndex < 0 || startIndex >= dates.length) return null;
+      const startD = dates[startIndex];
+      
+      // 3日後（データ上のインデックス+3として扱う）
+      let endIndex = Math.min(startIndex + 3, dates.length - 1);
+      const endD = dates[endIndex];
+
+      const sPlayStart = history[startD]?.[id]?.playCount || 0;
+      const sPlayEnd = history[endD]?.[id]?.playCount || 0;
+      const songDelta = Math.max(0, sPlayEnd - sPlayStart);
+
+      const tPlayStart = totalPlaysPerDate[startD] || 0;
+      const tPlayEnd = totalPlaysPerDate[endD] || 0;
+      const totalDelta = Math.max(0, tPlayEnd - tPlayStart);
+
+      if(totalDelta === 0) return null;
+      return songDelta / totalDelta;
+    };
+
+    const ratioStart = getDeltaRatio(addedIndex) || 0;
+
+    // 世代日の探索
+    for (let i = addedIndex + 1; i <= dates.length - 4; i++) {
+      const ratioX = getDeltaRatio(i);
+      // ある日の割合の50%未満になったら世代日とする
+      if (ratioX !== null && ratioStart < ratioX * 0.5) {
+        generationDates.push(dates[i]);
+      }
+    }
+
+    // 基準日: 最も早い世代日。なければ追加日
+    const sortDate = generationDates.length > 0 ? generationDates[0] : addedDate;
+    const title = song.title || "Unknown";
+
+    results.push({
+      id,
+      song,
+      addedDate,
+      generationDates,
+      sortDate,
+      title
+    });
+  }
+
+  // 条件3: 1.基準日(早い順) 2.追加日(早い順) 3.ABC順(タイトル)
+  results.sort((a, b) => {
+    if(a.sortDate !== b.sortDate) return a.sortDate.localeCompare(b.sortDate);
+    if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
+    return a.title.localeCompare(b.title);
+  });
+
+  return results;
+}
+
+function renderAddedDates() {
+  const list = calculateAddedAndGenerationDates();
+  const showGen = $("toggleGeneration").checked;
+  const container = $("addedDatesList");
+  
+  if(!list.length) {
+    container.innerHTML = '<div class="empty">データがありません。</div>';
+    return;
+  }
+
+  container.innerHTML = list.map((item, index) => {
+    const s = item.song;
+    const rank = String(index + 1).padStart(3, '0');
+    
+    // YouTubeサムネイルがあれば設定
+    const thumbUrl = s.youtubeId 
+      ? `https://img.youtube.com/vi/${encodeURIComponent(s.youtubeId)}/mqdefault.jpg` 
+      : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiLz48L3N2Zz4=';
+
+    let dateText = `(${item.addedDate})`;
+    if (showGen && item.generationDates.length > 0) {
+      dateText = `(追加: ${item.addedDate}, 世代: ${item.generationDates.join(', ')})`;
+    }
+
+    return `
+      <div class="added-date-item">
+        <img src="${thumbUrl}" alt="Thumbnail" class="added-date-thumb" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiLz48L3N2Zz4='">
+        <div class="added-date-main">
+          <div class="added-date-title">
+            #${rank} <a class="song-link" href="./index.html?id=${encodeURIComponent(item.id)}">${esc(item.title)}</a>
+          </div>
+          <div class="added-date-meta">${esc(dateText)}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+
 /* ---------- Bar chart race ---------- */
 let raceRows={};
 function getRaceFrameData(dateIndex,t){
@@ -481,6 +639,10 @@ async function load(){
     renderWeekly();
     renderChampions();
     setupRace();
+    
+    // 追加日リストの描画とイベント設定
+    renderAddedDates();
+    $("toggleGeneration").onchange = renderAddedDates;
 
     $("message").style.display="none";$("app").style.display="";
   }catch(e){
