@@ -98,7 +98,7 @@ input[type=range]{width:min(600px,70vw)}
   <div class="card"><div class="metric-label">記録日数</div><div class="metric" id="dayCount">—</div></div>
 </div>
 
-<!-- 楽曲追加日・世代日リスト -->
+<!-- 楽曲追加日・世代日リスト (NEW) -->
 <section>
   <div class="section-title">
     <h2>📅 楽曲追加日・世代日リスト</h2>
@@ -176,7 +176,7 @@ input[type=range]{width:min(600px,70vw)}
 
 <!-- 歴代好き度1位の変遷 -->
 <section>
-  <div class="section-title"><h2>👑 歴代「好き度 #1」の変遷</h2><span class="hint">order = 0 の歴史的変遷（旧データ含む）</span></div>
+  <div class="section-title"><h2>👑 歴代「好き度 #1」の変遷</h2><span class="hint">order = 0 の歴史的変遷</span></div>
   <div class="card"><div id="champions" class="champion-list"></div></div>
 </section>
 
@@ -204,466 +204,105 @@ input[type=range]{width:min(600px,70vw)}
 
 <script>
 const DB="https://ncs-music-e2d05-default-rtdb.firebaseio.com";
-let songs={},history={},dates=[],raceTimer=null,currentDateIndex=0,raceFrame=null;
+let songs={}, history={}, dates={}, fullHistory={}, fullDates=[], raceTimer=null, currentDateIndex=0, raceFrame=null;
+
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num=n=>Number(n||0).toLocaleString("ja-JP");
-const formatTime=sec=>{sec=Number(sec||0);let h=Math.floor(sec/3600),m=Math.floor(sec%3600/60);return h?`${h.toLocaleString()}時間 ${m}分`:`${m}分`};
-const parseDate=s=>new Date(s+"T00:00:00");
-const addDays=(d,n)=>new Date(d.getTime()+n*86400000);
+const formatTime=sec=>{sec=Number(sec||0指定された「楽曲追加日・世代日リスト」および「歴代『好き度 #1』の変遷」の2つの機能について、データ取得元を `daily_history` だけでなく `analytics_history` にも拡張しました。
 
-async function get(path){
-  const r=await fetch(DB+path+".json");
-  if(!r.ok)throw Error(`Firebase HTTP ${r.status}: ${path}`);
-  return await r.json();
+具体的には、両方のデータを取得して統合した `mergedHistory`（および日付リスト `mergedDates`）を生成し、対象の機能の計算時にのみこの統合データを使用するようにスクリプトを修正しています。他の機能（Bar Chart Raceや週間ランキングなど）は従来通り `daily_history` を基準に動作します。
+
+以下の修正版コードをご自身のHTMLファイルに上書きしてご使用ください。
+
+```html
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NCS Wiki – Dashboard</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#090b10;--panel:#11151d;--panel2:#171c25;--text:#eef2f7;
+  --muted:#9ba6b5;--line:#29313d;--accent:#7dd3fc;--accent2:#a78bfa;
+  --good:#86efac;--warn:#fbbf24;--danger:#fb7185;--radius:18px;
 }
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#080a0f,#0c1017);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:inherit}
+header{padding:28px 24px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(9,11,16,.92);backdrop-filter:blur(14px);z-index:10}
+.header-inner{max-width:1250px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+h1{font-size:28px;margin:0 0 5px}.sub{color:var(--muted);font-size:13px}
+button,select,input{font:inherit}
+button{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:9px 13px;border-radius:11px;cursor:pointer;transition:all 0.2s}
+button:hover{border-color:#536071;background:#202734}
+main{max-width:1250px;margin:0 auto;padding:24px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.metric-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.metric{font-size:30px;font-weight:800;margin-top:7px}
+section{margin-top:24px}
+.section-title{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+h2{font-size:20px;margin:0}.hint{font-size:12px;color:var(--muted)}
+.rank-table{width:100%;border-collapse:collapse}.rank-table th,.rank-table td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left}
+.rank-table th{font-size:12px;color:var(--muted);font-weight:600}.rank-table td{font-size:14px}
+.rank{font-weight:800;width:55px}.plays{font-variant-numeric:tabular-nums;text-align:right!important}
+.pref{color:var(--accent2);font-weight:700}.song-link{text-decoration:none}.song-link:hover{text-decoration:underline}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.controls label{font-size:13px;color:var(--muted)}
+input[type=range]{width:min(600px,70vw)}
+.race-wrap{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#0b0e14;padding:14px}
+.race-stage{position:relative;height:650px;min-height:500px}
+.race-row{position:absolute;left:0;right:0;height:34px;display:grid;grid-template-columns:32px 255px minmax(80px,1fr) 82px;gap:9px;align-items:center;will-change:transform,opacity;transition:transform .55s cubic-bezier(.2,.75,.25,1),opacity .35s ease}
+.race-rank{text-align:right;color:var(--muted);font-size:12px}
+.race-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.race-track{height:24px;border-radius:7px;background:#202632;overflow:hidden;position:relative}
+.race-fill{height:100%;width:0;border-radius:7px;background:linear-gradient(90deg,var(--accent),var(--accent2));will-change:width;transition:width .55s cubic-bezier(.2,.75,.25,1)}
+.race-value{text-align:right;font-variant-numeric:tabular-nums;font-weight:750;font-size:13px}
+.race-date{position:absolute;right:12px;bottom:3px;font-size:34px;font-weight:850;color:#ffffff12;pointer-events:none}
+.race-status{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:8px}
+.race-note{margin-top:10px;color:var(--muted);font-size:11px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.small-table{width:100%;border-collapse:collapse}.small-table th,.small-table td{padding:9px 6px;border-bottom:1px solid var(--line);font-size:13px}
+.small-table th{color:var(--muted);font-weight:600;text-align:left}.small-table td:last-child,.small-table th:last-child{text-align:right}
+.gain{color:var(--good);font-weight:700}.empty{color:var(--muted);padding:12px 0;text-align:center}
+.champion-list{display:flex;flex-direction:column;gap:9px}
+.champion{display:grid;grid-template-columns:74px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#ffffff03}
+.champion-era{font-weight:800;color:var(--accent2)}.champion-title{font-weight:700}.champion-date{color:var(--muted);font-size:11px;text-align:right}
+.error{color:var(--danger);background:#2a1118;border:1px solid #57202c;padding:12px;border-radius:12px;white-space:pre-wrap}
+.loading{color:var(--muted);padding:20px 0}
+.btn-copy{font-size:12px;padding:5px 10px;background:var(--panel);border-color:var(--line);border-radius:8px}
+.btn-copy:active{transform:scale(0.95)}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;background:#ffffff10;color:var(--muted);margin-left:6px}
 
-// 過去データ等、エラーになっても処理を止めないための安全な取得関数
-async function getSafe(path){
-  try {
-    const r = await fetch(DB+path+".json");
-    if (r.ok) return await r.json();
-  } catch (e) {}
-  return null;
+/* 追加日リスト用スタイル */
+.added-date-item { display:flex; align-items:center; gap:14px; background:#ffffff05; padding:10px 12px; border-radius:12px; border:1px solid var(--line); }
+.added-date-thumb { width:80px; height:45px; object-fit:cover; border-radius:6px; background:#1a202c; flex-shrink:0; }
+.added-date-main { flex:1; min-width:0; }
+.added-date-title { font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.added-date-meta { font-size:12px; color:var(--muted); margin-top:4px; }
+.toggle-label { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text); cursor:pointer; background:var(--panel2); border:1px solid var(--line); padding:6px 12px; border-radius:8px; }
+
+@media(max-width:900px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .two-col{grid-template-columns:1fr}
+  .race-row{grid-template-columns:28px 180px minmax(60px,1fr) 70px}
 }
-
-function getSongList(){
-  return Object.entries(songs).map(([id,s])=>({id,...s})).filter(Boolean);
+@media(max-width:600px){
+  main{padding:14px}.grid{grid-template-columns:1fr 1fr}.metric{font-size:23px}
+  .race-row{grid-template-columns:24px 105px minmax(50px,1fr) 60px;gap:6px}
+  .race-label{font-size:11px}.race-value{font-size:11px}.race-stage{height:520px}
 }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div><h1>🎵 NCS Wiki Dashboard</h1><div class="sub">NCS Player のデータを使った総合統計・ランキング</div></div>
+    <button id="reload">↻ 更新</button>
+  </div>
+</header>
 
-function competitionRanks(list, keyFn){
-  let last=null,rank=0;
-  return list.map((s,i)=>{let p=keyFn(s);if(p!==last)rank=i+1;last=p;return rank});
-}
-
-/* 1. 概要表示 & TOP50 / TOP20 */
-function renderOverview(){
-  const list=getSongList();
-  $("songCount").textContent=num(list.length);
-  $("totalPlays").textContent=num(list.reduce((a,s)=>a+Number(s.playCount||0),0));
-  $("totalTime").textContent=formatTime(list.reduce((a,s)=>a+Number(s.totalWatchTime||0),0));
-  $("dayCount").textContent=num(dates.length);
-
-  // 視聴回数 TOP50
-  const playsSorted=[...list].sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0) || Number(a.order||0)-Number(b.order||0));
-  const playRanks=competitionRanks(playsSorted, s=>Number(s.playCount||0));
-  
-  const top50=playsSorted.slice(0,50);
-  $("rankingPlays50").innerHTML=top50.map((s,i)=>`
-    <tr>
-      <td class="rank">#${playRanks[i]}</td>
-      <td><a class="song-link" href="./index.html?id=${encodeURIComponent(s.id||"")}">${esc(s.title||"Unknown")}</a></td>
-      <td class="pref">#${Number(s.order||0)+1}</td>
-      <td class="plays">${num(s.playCount)} 回</td>
-    </tr>
-  `).join("");
-
-  $("copyTop50").onclick=()=>{
-    const text=top50.map((s,i)=>`${playRanks[i]}. ${s.title||"Unknown"} - ${num(s.playCount)}回`).join("\n");
-    navigator.clipboard.writeText(text).then(()=>{
-      const orig=$("copyTop50").textContent;
-      $("copyTop50").textContent="✅ コピー完了！";
-      setTimeout(()=>{$("copyTop50").textContent=orig;},2000);
-    });
-  };
-
-  // 視聴時間 TOP20
-  const timeSorted=[...list].sort((a,b)=>Number(b.totalWatchTime||0)-Number(a.totalWatchTime||0));
-  const top20Time=timeSorted.slice(0,20);
-  const maxTime=Math.max(1,...top20Time.map(s=>Number(s.totalWatchTime||0)));
-
-  $("top20WatchTimeChart").innerHTML=top20Time.map((s,i)=>{
-    const w=Math.max(2,Number(s.totalWatchTime||0)/maxTime*100);
-    return `<div style="display:grid;grid-template-columns:35px minmax(140px,260px) 1fr 110px;gap:8px;align-items:center;margin:8px 0">
-      <b>#${i+1}</b>
-      <span title="${esc(s.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-        <a class="song-link" href="./index.html?id=${encodeURIComponent(s.id)}">${esc(s.title)}</a>
-      </span>
-      <div style="height:18px;background:#202632;border-radius:6px;overflow:hidden"><div style="height:100%;width:${w}%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:6px"></div></div>
-      <b style="text-align:right">${formatTime(s.totalWatchTime)}</b>
-    </div>`;
-  }).join("");
-}
-
-/* 2. 世代別 TOP1 */
-function renderGenerationTop(){
-  const list=getSongList();
-  const genMap={};
-  list.forEach(s=>{
-    const g=s.generation!==undefined && s.generation!==null ? s.generation : "未設定";
-    if(!genMap[g]) genMap[g]=[];
-    genMap[g].push(s);
-  });
-
-  const keys=Object.keys(genMap).sort((a,b)=>{
-    if(a==="未設定") return 1;
-    if(b==="未設定") return -1;
-    return Number(a)-Number(b);
-  });
-
-  $("generationTop").innerHTML=keys.map(g=>{
-    const topSong=genMap[g].sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0))[0];
-    return `<tr>
-      <td><b>第 ${esc(g)} 世代</b></td>
-      <td><a class="song-link" href="./index.html?id=${encodeURIComponent(topSong.id)}">${esc(topSong.title||"Unknown")}</a></td>
-      <td style="text-align:right" class="gain">${num(topSong.playCount)} 回</td>
-    </tr>`;
-  }).join("");
-}
-
-/* 3. ジャンル別 TOP1 */
-function renderGenreTop(){
-  const list=getSongList();
-  const genreMap={};
-  list.forEach(s=>{
-    const g=s.genre || "未分類";
-    if(!genreMap[g]) genreMap[g]=[];
-    genreMap[g].push(s);
-  });
-
-  const keys=Object.keys(genreMap).sort();
-  $("genreTop").innerHTML=keys.map(g=>{
-    const topSong=genreMap[g].sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0))[0];
-    return `<tr>
-      <td><span class="tag" style="margin:0">${esc(g)}</span></td>
-      <td><a class="song-link" href="./index.html?id=${encodeURIComponent(topSong.id)}">${esc(topSong.title||"Unknown")}</a></td>
-      <td style="text-align:right" class="gain">${num(topSong.playCount)} 回</td>
-    </tr>`;
-  }).join("");
-}
-
-/* 4. 直近1週間ランキング */
-function findBaselineIndex(){
-  if(!dates.length)return -1;
-  const latest=parseDate(dates[dates.length-1]);
-  const target=addDays(latest,-7);
-  let best=-1;
-  for(let i=0;i<dates.length;i++)if(parseDate(dates[i])<=target)best=i;
-  return best >= 0 ? best : 0;
-}
-
-function renderWeekly(){
-  if(dates.length<2)return;
-  const latest=dates[dates.length-1], bi=findBaselineIndex(), base=dates[bi];
-  $("weekRange").textContent=`${base} → ${latest}`;
-  
-  const a=history[base]||{}, b=history[latest]||{};
-  const allSongIds=Object.keys(songs);
-
-  const make=(field,formatter)=>allSongIds.map(id=>{
-    const cur = b[id]?.[field] ?? (songs[id]?.[field] || 0);
-    const old = a[id]?.[field] ?? 0;
-    const delta = cur - old;
-    if(delta <= 0) return null;
-    return {id, delta, s:songs[id], text:formatter(delta)};
-  }).filter(Boolean).sort((x,y)=>y.delta-x.delta).slice(0,20);
-
-  const plays=make("playCount",x=>num(x)+" 回");
-  const time=make("totalWatchTime",formatTime);
-  const table=(arr)=>arr.length?arr.map((x,i)=>`<tr><td>#${i+1}</td><td><a class="song-link" href="./index.html?id=${encodeURIComponent(x.s.id||x.id)}">${esc(x.s?.title||"Unknown")}</a></td><td class="gain">+${x.text}</td></tr>`).join(""):`<tr><td colspan="3" class="empty">この期間に増加したデータはありません。</td></tr>`;
-  
-  $("weeklyPlays").innerHTML=table(plays);
-  $("weeklyTime").innerHTML=table(time);
-}
-
-/* 履歴構築 */
-function buildHistory(raw){
-  const out={};
-  if(!raw)return out;
-  for(const [date,day] of Object.entries(raw)){
-    if(!day||!day.songs)continue;
-    out[date]={};
-    for(const [id,s] of Object.entries(day.songs||{})){
-      if(!s)continue;
-      out[date][id]={
-        playCount:Number.isFinite(Number(s.playCount))?Number(s.playCount):null,
-        totalWatchTime:Number.isFinite(Number(s.totalWatchTime))?Number(s.totalWatchTime):null,
-        order:Number.isFinite(Number(s.order))?Number(s.order):null
-      };
-    }
-  }
-  return out;
-}
-
-/* 5. 歴代「好き度 #1」の変遷 (過去の別テーブル履歴も統合) */
-function renderChampions(oldHistoryData = {}){
-  const obsMap = new Map();
-  
-  // ① 過去のデータ (analytics_history 等) を走査
-  for(const [date, dayData] of Object.entries(oldHistoryData)) {
-    if(!dayData) continue;
-    let champId = null;
-    if (Array.isArray(dayData)) {
-      champId = dayData[0]; // 配列形式なら先頭を1位とする
-    } else if (typeof dayData === 'object') {
-      for(const [id, v] of Object.entries(dayData)) {
-         if (v === 0) { champId = id; break; }
-         if (v && typeof v === 'object' && v.order === 0) { champId = id; break; }
-      }
-    }
-    if (champId && songs[champId]) {
-      obsMap.set(date, champId);
-    }
-  }
-
-  // ② 現在の履歴 (daily_history) を走査 (同日はこちらを優先して上書き)
-  for(const date of dates){
-    const vals = history[date] || {};
-    const candidates = Object.entries(vals).filter(([id,v]) => v && v.order === 0 && songs[id]);
-    if (candidates.length) {
-      candidates.sort((a,b) => String(a[0]).localeCompare(String(b[0])));
-      obsMap.set(date, candidates[0][0]);
-    }
-  }
-
-  // ③ 日付順にソートして代 (era) を計算
-  const sortedDates = Array.from(obsMap.keys()).sort();
-  const observations = sortedDates.map(date => ({ date, id: obsMap.get(date) }));
-  
-  const eras=[];
-  for(const o of observations){
-    const last=eras[eras.length-1];
-    if(last && last.id===o.id)last.end=o.date;
-    else eras.push({id:o.id,start:o.date,end:o.date});
-  }
-  
-  const list=eras.map((e,i)=>({...e,s:songs[e.id]}));
-  $("champions").innerHTML=list.length?list.map((e,i)=>`
-    <div class="champion">
-      <div class="champion-era">第${i+1}代</div>
-      <div class="champion-title"><a class="song-link" href="./index.html?id=${encodeURIComponent(e.id)}">${esc(e.s?.title||"Unknown")}</a></div>
-      <div class="champion-date">${e.start===e.end?e.start:e.start+" → "+e.end}</div>
-    </div>
-  `).join(""):`<div class="empty">order=0 の履歴がまだありません。</div>`;
-}
-
-/* 6. 追加日・世代日リストの処理 */
-function calculateAddedAndGenerationDates() {
-  const allIds = Object.keys(songs);
-  
-  const totalPlaysPerDate = {};
-  for(let i = 0; i < dates.length; i++) {
-    const d = dates[i];
-    let total = 0;
-    const dayData = history[d];
-    if(dayData) {
-      for(const id of allIds) {
-        total += (dayData[id]?.playCount || 0);
-      }
-    }
-    totalPlaysPerDate[d] = total;
-  }
-
-  const results = [];
-  for (const id of allIds) {
-    const song = songs[id];
-    let addedDate = null;
-    let addedIndex = -1;
-
-    for(let i = 0; i < dates.length; i++) {
-      const d = dates[i];
-      const data = history[d]?.[id];
-      if(data) {
-        if((data.playCount && data.playCount > 0) || (data.order !== null && data.order !== undefined)) {
-          addedDate = d;
-          addedIndex = i;
-          break;
-        }
-      }
-    }
-
-    if(!addedDate) continue;
-
-    const generationDates = [];
-    const getDeltaRatio = (startIndex) => {
-      if(startIndex < 0 || startIndex >= dates.length) return null;
-      const startD = dates[startIndex];
-      let endIndex = Math.min(startIndex + 3, dates.length - 1);
-      const endD = dates[endIndex];
-      const sPlayStart = history[startD]?.[id]?.playCount || 0;
-      const sPlayEnd = history[endD]?.[id]?.playCount || 0;
-      const songDelta = Math.max(0, sPlayEnd - sPlayStart);
-      const tPlayStart = totalPlaysPerDate[startD] || 0;
-      const tPlayEnd = totalPlaysPerDate[endD] || 0;
-      const totalDelta = Math.max(0, tPlayEnd - tPlayStart);
-      if(totalDelta === 0) return null;
-      return songDelta / totalDelta;
-    };
-
-    const ratioStart = getDeltaRatio(addedIndex) || 0;
-    for (let i = addedIndex + 1; i <= dates.length - 4; i++) {
-      const ratioX = getDeltaRatio(i);
-      if (ratioX !== null && ratioStart < ratioX * 0.5) {
-        generationDates.push(dates[i]);
-      }
-    }
-
-    const sortDate = generationDates.length > 0 ? generationDates[0] : addedDate;
-    const title = song.title || "Unknown";
-
-    results.push({ id, song, addedDate, generationDates, sortDate, title });
-  }
-
-  results.sort((a, b) => {
-    if(a.sortDate !== b.sortDate) return a.sortDate.localeCompare(b.sortDate);
-    if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
-    return a.title.localeCompare(b.title);
-  });
-
-  return results;
-}
-
-function renderAddedDates() {
-  const list = calculateAddedAndGenerationDates();
-  const showGen = $("toggleGeneration").checked;
-  const container = $("addedDatesList");
-  
-  if(!list.length) {
-    container.innerHTML = '<div class="empty">データがありません。</div>';
-    return;
-  }
-
-  container.innerHTML = list.map((item, index) => {
-    const s = item.song;
-    const rank = String(index + 1).padStart(3, '0');
-    const thumbUrl = s.youtubeId 
-      ? `https://img.youtube.com/vi/${encodeURIComponent(s.youtubeId)}/mqdefault.jpg` 
-      : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiLz48L3N2Zz4=';
-
-    let dateText = `(${item.addedDate})`;
-    if (showGen && item.generationDates.length > 0) {
-      dateText = `(追加: ${item.addedDate}, 世代: ${item.generationDates.join(', ')})`;
-    }
-
-    return `
-      <div class="added-date-item">
-        <img src="${thumbUrl}" alt="Thumbnail" class="added-date-thumb" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiLz48L3N2Zz4='">
-        <div class="added-date-main">
-          <div class="added-date-title">
-            #${rank} <a class="song-link" href="./index.html?id=${encodeURIComponent(item.id)}">${esc(item.title)}</a>
-          </div>
-          <div class="added-date-meta">${esc(dateText)}</div>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-/* ---------- Bar chart race ---------- */
-let raceRows={};
-function getRaceFrameData(dateIndex,t){
-  const d0=dates[dateIndex],d1=dates[Math.min(dateIndex+1,dates.length-1)];
-  const a=history[d0]||{},b=history[d1]||{};
-  const map=new Map();
-  for(const id of new Set([...Object.keys(a),...Object.keys(b)])){
-    const va=a[id]?.playCount,vb=b[id]?.playCount;
-    if(va===null&&vb===null)continue;
-    if(va===undefined||va===null||vb===undefined||vb===null)continue;
-    if(!songs[id])continue;
-    map.set(id,{id,plays:va+(vb-va)*t,s:songs[id]});
-  }
-  return [...map.values()].sort((x,y)=>y.plays-x.plays);
-}
-function ensureRaceRows(n){
-  const stage=$("raceStage");
-  const keep=new Set();
-  for(let i=0;i<n;i++){
-    keep.add(i);
-    if(!raceRows[i]){
-      const el=document.createElement("div");
-      el.className="race-row";
-      el.innerHTML=`<span class="race-rank"></span><span class="race-label"></span><span class="race-track"><span class="race-fill"></span></span><span class="race-value"></span>`;
-      stage.appendChild(el);raceRows[i]=el;
-    }
-  }
-  for(const k of Object.keys(raceRows))if(!keep.has(Number(k))){raceRows[k].remove();delete raceRows[k]}
-}
-function drawRaceFrame(dateIndex,t){
-  const rows=getRaceFrameData(dateIndex,t).slice(0,Number($("topN").value));
-  ensureRaceRows(rows.length);
-  const max=Math.max(1,...rows.map(x=>x.plays));
-  rows.forEach((x,i)=>{
-    const el=raceRows[i];
-    el.style.transform=`translateY(${i*36}px)`;
-    el.style.opacity="1";
-    el.querySelector(".race-rank").textContent="#"+(i+1);
-    el.querySelector(".race-label").textContent=x.s.title||"Unknown";
-    el.querySelector(".race-label").title=x.s.title||"";
-    el.querySelector(".race-fill").style.width=(Math.max(0,x.plays)/max*100)+"%";
-    el.querySelector(".race-value").textContent=num(Math.round(x.plays));
-  });
-  $("raceDateWatermark").textContent=dates[Math.min(dateIndex+1,dates.length-1)]||"";
-  $("dateLabel").textContent=dates[dateIndex]||"—";
-  $("dateSlider").value=dateIndex;
-  $("raceInfo").textContent=`${rows.length}曲 / ${dates[dateIndex]||"—"} → ${dates[Math.min(dateIndex+1,dates.length-1)]||"—"}`;
-}
-function renderRace(){drawRaceFrame(currentDateIndex,0)}
-function stopRace(){
-  if(raceTimer){clearTimeout(raceTimer);raceTimer=null}
-  if(raceFrame){cancelAnimationFrame(raceFrame);raceFrame=null}
-}
-function playNextTransition(){
-  if(currentDateIndex>=dates.length-1){stopRace();renderRace();return}
-  const start=performance.now(),duration=Number($("raceSpeed").value);
-  const from=currentDateIndex;
-  function step(now){
-    const t=Math.min(1,(now-start)/duration);
-    const eased=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
-    drawRaceFrame(from,eased);
-    if(t<1)raceFrame=requestAnimationFrame(step);
-    else{
-      currentDateIndex++;
-      raceFrame=null;
-      raceTimer=setTimeout(playNextTransition,80);
-    }
-  }
-  raceFrame=requestAnimationFrame(step);
-}
-function setupRace(){
-  $("dateSlider").max=Math.max(0,dates.length-1);
-  $("dateSlider").value=currentDateIndex;
-  $("dateSlider").oninput=e=>{stopRace();currentDateIndex=Number(e.target.value);renderRace()};
-  $("topN").onchange=()=>{stopRace();renderRace()};
-  $("playRace").onclick=()=>{if(raceTimer||raceFrame||dates.length<2)return;playNextTransition()};
-  $("stopRace").onclick=stopRace;
-  renderRace();
-}
-
-async function load(){
-  stopRace();
-  $("message").className="loading";$("message").textContent="Firebaseからデータを読み込んでいます…";$("app").style.display="none";
-  try{
-    songs=await get("/music_chart/songs")||{};
-    history=buildHistory(await get("/music_chart/daily_history"));
-    dates=Object.keys(history).sort();
-    currentDateIndex=Math.max(0,dates.length-1);
-
-    // 8/3以前の旧履歴データの取得 (存在する可能性があるパスを並行して試行)
-    const [old1, old2, old3, old4] = await Promise.all([
-      getSafe("/music_chart/analytics_history"),
-      getSafe("/music_chart/history_analytics"),
-      getSafe("/analytics_history"),
-      getSafe("/history_analytics")
-    ]);
-    const oldHistory = old1 || old2 || old3 || old4 || {};
-    
-    renderOverview();
-    renderGenerationTop();
-    renderGenreTop();
-    renderWeekly();
-    renderChampions(oldHistory);
-    setupRace();
-    
-    renderAddedDates();
-    $("toggleGeneration").onchange = renderAddedDates;
-
-    $("message").style.display="none";$("app").style.display="";
-  }catch(e){
-    $("message").className="error";$("message").textContent="データの読み込みに失敗しました。\n"+e.message;
-  }
-}
-$("reload").onclick=load;
-load();
-</script>
-</body>
-</html>
+<main>
