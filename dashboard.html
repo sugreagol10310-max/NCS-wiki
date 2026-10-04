@@ -203,7 +203,7 @@ input[type=range]{width:min(600px,70vw)}
 </main>
 
 <script>
-const DB="[https://ncs-music-e2d05-default-rtdb.firebaseio.com](https://ncs-music-e2d05-default-rtdb.firebaseio.com)";
+const DB="https://ncs-music-e2d05-default-rtdb.firebaseio.com";
 let songs={}, history={}, dates=[], mergedHistory={}, mergedDates=[];
 let raceTimer=null, currentDateIndex=0, raceFrame=null;
 
@@ -385,7 +385,6 @@ function buildHistory(raw){
 /* 5. 歴代「好き度 #1」の変遷 (analytics_history + daily_history を参照) */
 function renderChampions(){
   const observations=[];
-  // mergedDates (統合データの日付リスト) を使用
   for(const date of mergedDates){
     const vals=mergedHistory[date]||{};
     const candidates=Object.entries(vals).filter(([id,v])=>v && v.order===0 && songs[id]);
@@ -413,7 +412,6 @@ function renderChampions(){
 function calculateAddedAndGenerationDates() {
   const allIds = Object.keys(songs);
   
-  // 統合履歴(mergedHistory)の全体再生回数を計算
   const totalPlaysPerDate = {};
   for(let i = 0; i < mergedDates.length; i++) {
     const d = mergedDates[i];
@@ -515,7 +513,7 @@ function renderAddedDates() {
     const rank = String(index + 1).padStart(3, '0');
     
     const thumbUrl = s.youtubeId 
-      ? `[https://img.youtube.com/vi/$](https://img.youtube.com/vi/$){encodeURIComponent(s.youtubeId)}/mqdefault.jpg` 
+      ? `https://img.youtube.com/vi/${encodeURIComponent(s.youtubeId)}/mqdefault.jpg` 
       : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiLz48L3N2Zz4=';
 
     let dateText = `(${item.addedDate})`;
@@ -631,7 +629,6 @@ async function load(){
     currentDateIndex=Math.max(0,dates.length-1);
     
     // 統合履歴の作成 (analytics_history と daily_history をマージ)
-    // 重複する日付がある場合は daily_history の値で上書き
     const combinedRaw = { ...rawAnalytics, ...rawDaily };
     mergedHistory = buildHistory(combinedRaw);
     mergedDates = Object.keys(mergedHistory).sort();
@@ -641,7 +638,7 @@ async function load(){
     renderGenreTop();
     renderWeekly();
 
-    // 以下の機能は拡張された統合データ (mergedHistory) を使用
+    // 拡張された統合データ (mergedHistory) を使用する機能
     renderChampions(); 
     renderAddedDates();
     $("toggleGeneration").onchange = renderAddedDates;
