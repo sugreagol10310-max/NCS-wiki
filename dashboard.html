@@ -98,7 +98,7 @@ input[type=range]{width:min(600px,70vw)}
   <div class="card"><div class="metric-label">記録日数</div><div class="metric" id="dayCount">—</div></div>
 </div>
 
-<!-- 楽曲追加日・世代日リスト (NEW) -->
+<!-- 楽曲追加日・世代日リスト -->
 <section>
   <div class="section-title">
     <h2>📅 楽曲追加日・世代日リスト</h2>
@@ -176,7 +176,7 @@ input[type=range]{width:min(600px,70vw)}
 
 <!-- 歴代好き度1位の変遷 -->
 <section>
-  <div class="section-title"><h2>👑 歴代「好き度 #1」の変遷</h2><span class="hint">order = 0 の歴史的変遷</span></div>
+  <div class="section-title"><h2>👑 歴代「好き度 #1」の変遷</h2><span class="hint">order = 0 の歴史的変遷（旧データ含む）</span></div>
   <div class="card"><div id="champions" class="champion-list"></div></div>
 </section>
 
@@ -218,6 +218,15 @@ async function get(path){
   return await r.json();
 }
 
+// 過去データ等、エラーになっても処理を止めないための安全な取得関数
+async function getSafe(path){
+  try {
+    const r = await fetch(DB+path+".json");
+    if (r.ok) return await r.json();
+  } catch (e) {}
+  return null;
+}
+
 function getSongList(){
   return Object.entries(songs).map(([id,s])=>({id,...s})).filter(Boolean);
 }
@@ -249,7 +258,6 @@ function renderOverview(){
     </tr>
   `).join("");
 
-  // コピペ用機能のセットアップ
   $("copyTop50").onclick=()=>{
     const text=top50.map((s,i)=>`${playRanks[i]}. ${s.title||"Unknown"} - ${num(s.playCount)}回`).join("\n");
     navigator.clipboard.writeText(text).then(()=>{
@@ -281,7 +289,6 @@ function renderOverview(){
 function renderGenerationTop(){
   const list=getSongList();
   const genMap={};
-  
   list.forEach(s=>{
     const g=s.generation!==undefined && s.generation!==null ? s.generation : "未設定";
     if(!genMap[g]) genMap[g]=[];
@@ -308,7 +315,6 @@ function renderGenerationTop(){
 function renderGenreTop(){
   const list=getSongList();
   const genreMap={};
-
   list.forEach(s=>{
     const g=s.genre || "未分類";
     if(!genreMap[g]) genreMap[g]=[];
@@ -316,7 +322,6 @@ function renderGenreTop(){
   });
 
   const keys=Object.keys(genreMap).sort();
-
   $("genreTop").innerHTML=keys.map(g=>{
     const topSong=genreMap[g].sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0))[0];
     return `<tr>
@@ -327,7 +332,7 @@ function renderGenreTop(){
   }).join("");
 }
 
-/* 4. 直近1週間ランキング (1週間前の未存在データは 0 換算) */
+/* 4. 直近1週間ランキング */
 function findBaselineIndex(){
   if(!dates.length)return -1;
   const latest=parseDate(dates[dates.length-1]);
@@ -346,8 +351,8 @@ function renderWeekly(){
   const allSongIds=Object.keys(songs);
 
   const make=(field,formatter)=>allSongIds.map(id=>{
-    const cur = b[id]?.[field] ?? (songs[id]?.[field] || 0); // 最新日の数値（無ければ現在の実数値）
-    const old = a[id]?.[field] ?? 0; // 1週間前に記録がなければ 0 換算
+    const cur = b[id]?.[field] ?? (songs[id]?.[field] || 0);
+    const old = a[id]?.[field] ?? 0;
     const delta = cur - old;
     if(delta <= 0) return null;
     return {id, delta, s:songs[id], text:formatter(delta)};
@@ -355,7 +360,6 @@ function renderWeekly(){
 
   const plays=make("playCount",x=>num(x)+" 回");
   const time=make("totalWatchTime",formatTime);
-
   const table=(arr)=>arr.length?arr.map((x,i)=>`<tr><td>#${i+1}</td><td><a class="song-link" href="./index.html?id=${encodeURIComponent(x.s.id||x.id)}">${esc(x.s?.title||"Unknown")}</a></td><td class="gain">+${x.text}</td></tr>`).join(""):`<tr><td colspan="3" class="empty">この期間に増加したデータはありません。</td></tr>`;
   
   $("weeklyPlays").innerHTML=table(plays);
@@ -381,22 +385,48 @@ function buildHistory(raw){
   return out;
 }
 
-/* 5. 歴代「好き度 #1」の変遷 */
-function renderChampions(){
-  const observations=[];
-  for(const date of dates){
-    const vals=history[date]||{};
-    const candidates=Object.entries(vals).filter(([id,v])=>v && v.order===0 && songs[id]);
-    if(!candidates.length)continue;
-    candidates.sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
-    observations.push({date,id:candidates[0][0]});
+/* 5. 歴代「好き度 #1」の変遷 (過去の別テーブル履歴も統合) */
+function renderChampions(oldHistoryData = {}){
+  const obsMap = new Map();
+  
+  // ① 過去のデータ (analytics_history 等) を走査
+  for(const [date, dayData] of Object.entries(oldHistoryData)) {
+    if(!dayData) continue;
+    let champId = null;
+    if (Array.isArray(dayData)) {
+      champId = dayData[0]; // 配列形式なら先頭を1位とする
+    } else if (typeof dayData === 'object') {
+      for(const [id, v] of Object.entries(dayData)) {
+         if (v === 0) { champId = id; break; }
+         if (v && typeof v === 'object' && v.order === 0) { champId = id; break; }
+      }
+    }
+    if (champId && songs[champId]) {
+      obsMap.set(date, champId);
+    }
   }
+
+  // ② 現在の履歴 (daily_history) を走査 (同日はこちらを優先して上書き)
+  for(const date of dates){
+    const vals = history[date] || {};
+    const candidates = Object.entries(vals).filter(([id,v]) => v && v.order === 0 && songs[id]);
+    if (candidates.length) {
+      candidates.sort((a,b) => String(a[0]).localeCompare(String(b[0])));
+      obsMap.set(date, candidates[0][0]);
+    }
+  }
+
+  // ③ 日付順にソートして代 (era) を計算
+  const sortedDates = Array.from(obsMap.keys()).sort();
+  const observations = sortedDates.map(date => ({ date, id: obsMap.get(date) }));
+  
   const eras=[];
   for(const o of observations){
     const last=eras[eras.length-1];
     if(last && last.id===o.id)last.end=o.date;
     else eras.push({id:o.id,start:o.date,end:o.date});
   }
+  
   const list=eras.map((e,i)=>({...e,s:songs[e.id]}));
   $("champions").innerHTML=list.length?list.map((e,i)=>`
     <div class="champion">
@@ -411,7 +441,6 @@ function renderChampions(){
 function calculateAddedAndGenerationDates() {
   const allIds = Object.keys(songs);
   
-  // 日ごとの全体再生回数を計算
   const totalPlaysPerDate = {};
   for(let i = 0; i < dates.length; i++) {
     const d = dates[i];
@@ -426,13 +455,11 @@ function calculateAddedAndGenerationDates() {
   }
 
   const results = [];
-
   for (const id of allIds) {
     const song = songs[id];
     let addedDate = null;
     let addedIndex = -1;
 
-    // 条件1 & 2: 追加日を特定（playCount > 0 または order が記録された最初の日）
     for(let i = 0; i < dates.length; i++) {
       const d = dates[i];
       const data = history[d]?.[id];
@@ -445,57 +472,38 @@ function calculateAddedAndGenerationDates() {
       }
     }
 
-    if(!addedDate) continue; // 記録が一切ない曲はスキップ
+    if(!addedDate) continue;
 
     const generationDates = [];
-    
-    // 特定の日から3日間の増加割合（曲の増加量 / 全体の増加量）を計算する関数
     const getDeltaRatio = (startIndex) => {
       if(startIndex < 0 || startIndex >= dates.length) return null;
       const startD = dates[startIndex];
-      
-      // 3日後（データ上のインデックス+3として扱う）
       let endIndex = Math.min(startIndex + 3, dates.length - 1);
       const endD = dates[endIndex];
-
       const sPlayStart = history[startD]?.[id]?.playCount || 0;
       const sPlayEnd = history[endD]?.[id]?.playCount || 0;
       const songDelta = Math.max(0, sPlayEnd - sPlayStart);
-
       const tPlayStart = totalPlaysPerDate[startD] || 0;
       const tPlayEnd = totalPlaysPerDate[endD] || 0;
       const totalDelta = Math.max(0, tPlayEnd - tPlayStart);
-
       if(totalDelta === 0) return null;
       return songDelta / totalDelta;
     };
 
     const ratioStart = getDeltaRatio(addedIndex) || 0;
-
-    // 世代日の探索
     for (let i = addedIndex + 1; i <= dates.length - 4; i++) {
       const ratioX = getDeltaRatio(i);
-      // ある日の割合の50%未満になったら世代日とする
       if (ratioX !== null && ratioStart < ratioX * 0.5) {
         generationDates.push(dates[i]);
       }
     }
 
-    // 基準日: 最も早い世代日。なければ追加日
     const sortDate = generationDates.length > 0 ? generationDates[0] : addedDate;
     const title = song.title || "Unknown";
 
-    results.push({
-      id,
-      song,
-      addedDate,
-      generationDates,
-      sortDate,
-      title
-    });
+    results.push({ id, song, addedDate, generationDates, sortDate, title });
   }
 
-  // 条件3: 1.基準日(早い順) 2.追加日(早い順) 3.ABC順(タイトル)
   results.sort((a, b) => {
     if(a.sortDate !== b.sortDate) return a.sortDate.localeCompare(b.sortDate);
     if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
@@ -518,8 +526,6 @@ function renderAddedDates() {
   container.innerHTML = list.map((item, index) => {
     const s = item.song;
     const rank = String(index + 1).padStart(3, '0');
-    
-    // YouTubeサムネイルがあれば設定
     const thumbUrl = s.youtubeId 
       ? `https://img.youtube.com/vi/${encodeURIComponent(s.youtubeId)}/mqdefault.jpg` 
       : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiLz48L3N2Zz4=';
@@ -542,7 +548,6 @@ function renderAddedDates() {
     `;
   }).join("");
 }
-
 
 /* ---------- Bar chart race ---------- */
 let raceRows={};
@@ -632,15 +637,23 @@ async function load(){
     history=buildHistory(await get("/music_chart/daily_history"));
     dates=Object.keys(history).sort();
     currentDateIndex=Math.max(0,dates.length-1);
+
+    // 8/3以前の旧履歴データの取得 (存在する可能性があるパスを並行して試行)
+    const [old1, old2, old3, old4] = await Promise.all([
+      getSafe("/music_chart/analytics_history"),
+      getSafe("/music_chart/history_analytics"),
+      getSafe("/analytics_history"),
+      getSafe("/history_analytics")
+    ]);
+    const oldHistory = old1 || old2 || old3 || old4 || {};
     
     renderOverview();
     renderGenerationTop();
     renderGenreTop();
     renderWeekly();
-    renderChampions();
+    renderChampions(oldHistory);
     setupRace();
     
-    // 追加日リストの描画とイベント設定
     renderAddedDates();
     $("toggleGeneration").onchange = renderAddedDates;
 
