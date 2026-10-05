@@ -408,7 +408,7 @@
           <h2>Basic Information</h2>
           <div class="meta-grid">
             <div class="meta-item"><div class="label">Year</div><div class="value" id="year">—</div></div>
-            <div class="meta-item"><div class="label">Generation</div><div class="value" id="generation">—</div></div>
+            <div class="meta-item"><div class="label">Added Date</div><div class="value" id="addedDate">—</div></div>
             <div class="meta-item"><div class="label">Duration</div><div class="value" id="duration">—</div></div>
             <div class="meta-item"><div class="label">Song ID</div><div class="value" id="songId">—</div></div>
             <div class="meta-item"><div class="label">YouTube ID</div><div class="value" id="youtubeId">—</div></div>
@@ -670,6 +670,15 @@
       const rows = Array.from(combinedMap.values());
       rows.sort((a, b) => a.date.localeCompare(b.date));
       return rows;
+    }
+
+    // 追加日（最も古いデータが存在する日付）を算出する関数
+    function getAddedDate(rows) {
+      if (!rows || !rows.length) return "—";
+      // 視聴回数または好き度順位のデータが存在する最初のレコードを探す
+      const validRows = rows.filter(r => r.plays !== null || r.rank !== null);
+      if (!validRows.length) return "—";
+      return formatDate(validRows[0].date);
     }
 
     // 日付の抜けを補完するヘルパー関数
@@ -1144,7 +1153,7 @@
       $("genreTag").textContent = `Genre: ${song.genre ?? "—"}`;
 
       $("year").textContent = song.year ?? "—";
-      $("generation").textContent = song.generation ?? "—";
+      $("addedDate").textContent = getAddedDate(historyRows);
       $("duration").textContent = formatDuration(song.duration);
       $("songId").textContent = song.id ?? songId;
       $("youtubeId").textContent = song.youtubeId ?? "—";
