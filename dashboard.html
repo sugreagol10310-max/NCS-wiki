@@ -66,6 +66,7 @@ input[type=range]{width:min(600px,70vw)}
 .added-date-title { font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .added-date-meta { font-size:12px; color:var(--muted); margin-top:4px; }
 .toggle-label { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text); cursor:pointer; background:var(--panel2); border:1px solid var(--line); padding:6px 12px; border-radius:8px; }
+.toggle-group { display:inline-flex; gap:12px; align-items:center; flex-wrap:wrap; }
 
 @media(max-width:900px){
   .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -102,8 +103,11 @@ input[type=range]{width:min(600px,70vw)}
 <section>
   <div class="section-title">
     <h2>📅 楽曲追加日・世代日リスト</h2>
-    <div>
-      <label class="toggle-label"><input type="checkbox" id="toggleGeneration" checked> 世代日も表示</label>
+    <div class="toggle-group">
+      <span class="hint">並び順:</span>
+      <label class="toggle-label"><input type="radio" name="sortOrder" value="oldest_generation" checked> 世代日(最古)</label>
+      <label class="toggle-label"><input type="radio" name="sortOrder" value="added_date"> 追加日</label>
+      <label class="toggle-label" style="margin-left: 8px;"><input type="checkbox" id="toggleGeneration" checked> 世代日も表示</label>
     </div>
   </div>
   <div class="card" style="max-height: 550px; overflow-y: auto;">
@@ -476,7 +480,6 @@ function calculateAddedAndGenerationDates() {
       }
     }
 
-    const sortDate = generationDates.length > 0 ? generationDates[0] : addedDate;
     const title = song.title || "Unknown";
 
     results.push({
@@ -484,14 +487,22 @@ function calculateAddedAndGenerationDates() {
       song,
       addedDate,
       generationDates,
-      sortDate,
+      oldestGenDate: generationDates.length > 0 ? generationDates[0] : addedDate,
       title
     });
   }
 
+  // 選択されたトグル（ソートモード）を取得
+  const sortMode = document.querySelector('input[name="sortOrder"]:checked')?.value || "oldest_generation";
+
   results.sort((a, b) => {
-    if(a.sortDate !== b.sortDate) return a.sortDate.localeCompare(b.sortDate);
-    if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
+    if (sortMode === "oldest_generation") {
+      if(a.oldestGenDate !== b.oldestGenDate) return a.oldestGenDate.localeCompare(b.oldestGenDate);
+      if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
+    } else { // added_date
+      if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
+      if(a.oldestGenDate !== b.oldestGenDate) return a.oldestGenDate.localeCompare(b.oldestGenDate);
+    }
     return a.title.localeCompare(b.title);
   });
 
@@ -642,6 +653,9 @@ async function load(){
     renderChampions(); 
     renderAddedDates();
     $("toggleGeneration").onchange = renderAddedDates;
+    document.querySelectorAll('input[name="sortOrder"]').forEach(radio => {
+      radio.onchange = renderAddedDates;
+    });
 
     setupRace();
 
