@@ -16,6 +16,7 @@ body{margin:0;background:linear-gradient(180deg,#080a0f,#0c1017);color:var(--tex
 a{color:inherit}
 header{padding:28px 24px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(9,11,16,.92);backdrop-filter:blur(14px);z-index:10}
 .header-inner{max-width:1250px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.header-actions{display:flex;align-items:center;gap:12px;}
 h1{font-size:28px;margin:0 0 5px}.sub{color:var(--muted);font-size:13px}
 button,select,input{font:inherit}
 button{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:9px 13px;border-radius:11px;cursor:pointer;transition:all 0.2s}
@@ -68,6 +69,10 @@ input[type=range]{width:min(600px,70vw)}
 .toggle-label { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text); cursor:pointer; background:var(--panel2); border:1px solid var(--line); padding:6px 12px; border-radius:8px; }
 .toggle-group { display:inline-flex; gap:12px; align-items:center; flex-wrap:wrap; }
 
+/* CSVエクスポート用スタイル */
+.export-group { display:flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--line); padding:4px 8px; border-radius:11px; }
+.export-group select { background:transparent; border:none; color:var(--text); font-size:13px; cursor:pointer; outline:none; }
+
 @media(max-width:900px){
   .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .two-col{grid-template-columns:1fr}
@@ -77,6 +82,8 @@ input[type=range]{width:min(600px,70vw)}
   main{padding:14px}.grid{grid-template-columns:1fr 1fr}.metric{font-size:23px}
   .race-row{grid-template-columns:24px 105px minmax(50px,1fr) 60px;gap:6px}
   .race-label{font-size:11px}.race-value{font-size:11px}.race-stage{height:520px}
+  .header-inner{flex-direction:column;align-items:flex-start}
+  .header-actions{width:100%;justify-content:space-between}
 }
 </style>
 </head>
@@ -84,7 +91,16 @@ input[type=range]{width:min(600px,70vw)}
 <header>
   <div class="header-inner">
     <div><h1>🎵 NCS Wiki Dashboard</h1><div class="sub">NCS Player のデータを使った総合統計・ランキング</div></div>
-    <button id="reload">↻ 更新</button>
+    <div class="header-actions">
+      <div class="export-group">
+        <select id="csvMetric">
+          <option value="playCount">再生回数</option>
+          <option value="totalWatchTime">視聴時間 (秒)</option>
+        </select>
+        <button id="exportCsv">📥 CSV出力</button>
+      </div>
+      <button id="reload">↻ 更新</button>
+    </div>
   </div>
 </header>
 
@@ -217,6 +233,7 @@ const num=n=>Number(n||0).toLocaleString("ja-JP");
 const formatTime=sec=>{sec=Number(sec||0);let h=Math.floor(sec/3600),m=Math.floor(sec%3600/60);return h?`${h.toLocaleString()}時間 ${m}分`:`${m}分`};
 const parseDate=s=>new Date(s+"T00:00:00");
 const addDays=(d,n)=>new Date(d.getTime()+n*86400000);
+const formatDateStr=d=>d.toISOString().split('T')[0];
 
 async function get(path){
   const r=await fetch(DB+path+".json");
@@ -492,14 +509,13 @@ function calculateAddedAndGenerationDates() {
     });
   }
 
-  // 選択されたトグル（ソートモード）を取得
   const sortMode = document.querySelector('input[name="sortOrder"]:checked')?.value || "oldest_generation";
 
   results.sort((a, b) => {
     if (sortMode === "oldest_generation") {
       if(a.oldestGenDate !== b.oldestGenDate) return a.oldestGenDate.localeCompare(b.oldestGenDate);
       if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
-    } else { // added_date
+    } else {
       if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
       if(a.oldestGenDate !== b.oldestGenDate) return a.oldestGenDate.localeCompare(b.oldestGenDate);
     }
@@ -544,6 +560,91 @@ function renderAddedDates() {
       </div>
     `;
   }).join("");
+}
+
+/* 7. CSVエクスポート機能 */
+function exportHistoryToCSV() {
+  if (!mergedDates.length) {
+    alert("出力できるデータがありません。");
+    return;
+  }
+
+  const metric = $("csvMetric").value; // "playCount" または "totalWatchTime"
+  const metricLabel = metric === "playCount" ? "再生回数" : "視聴時間(秒)";
+
+  // 最新日付の取得
+  const endDateStr = mergedDates[mergedDates.length - 1];
+  const endDate = parseDate(endDateStr);
+
+  // 5/12の初期化：最新年の5/12、あるいは最古データがそれより新しい場合は最古データの年
+  let startYear = parseDate(mergedDates[0]).getFullYear();
+  let startDate = new Date(`${startYear}-05-12T00:00:00`);
+
+  // もしデータ内の最古日付がスタートより後で、かつmergedDates内に5/12が含まれる場合調整
+  if (endDate < startDate) {
+    startDate = new Date(`${endDate.getFullYear()}-05-12T00:00:00`);
+  }
+
+  // 日付リスト（列）の生成: startDate から endDate まで1日刻み
+  const dateList = [];
+  let curr = new Date(startDate.getTime());
+  while (curr <= endDate) {
+    dateList.push(formatDateStr(curr));
+    curr = addDays(curr, 1);
+  }
+
+  if (!dateList.length) {
+    alert("指定期間(5/12〜現在)のデータが存在しません。");
+    return;
+  }
+
+  const allSongIds = Object.keys(songs);
+  
+  // CSVヘッダー作成
+  const headers = ["曲名", ...dateList];
+  const rows = [headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",")];
+
+  // 曲ごとの行データを作成
+  for (const id of allSongIds) {
+    const songTitle = songs[id]?.title || id;
+    const row = [`"${songTitle.replace(/"/g, '""')}"`];
+    
+    let lastValue = 0;
+    
+    // 5/12より前の最新データを初期値として探索
+    for (let i = 0; i < mergedDates.length; i++) {
+      if (mergedDates[i] < dateList[0]) {
+        const val = mergedHistory[mergedDates[i]]?.[id]?.[metric];
+        if (val !== null && val !== undefined) {
+          lastValue = val;
+        }
+      } else {
+        break;
+      }
+    }
+
+    // 5/12 〜 最新日 までの各日の値を探索（データがなければ直前値を流用）
+    for (const d of dateList) {
+      const val = mergedHistory[d]?.[id]?.[metric];
+      if (val !== null && val !== undefined) {
+        lastValue = val;
+      }
+      row.push(lastValue);
+    }
+
+    rows.push(row.join(","));
+  }
+
+  const csvContent = "\uFEFF" + rows.join("\r\n"); // UTF-8 BOM付き
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ncs_wiki_${metric}_${dateList[0]}_to_${endDateStr}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 /* ---------- Bar chart race (daily_historyベース) ---------- */
@@ -658,6 +759,9 @@ async function load(){
     });
 
     setupRace();
+
+    // CSV出力ボタンのイベント設定
+    $("exportCsv").onclick = exportHistoryToCSV;
 
     $("message").style.display="none";$("app").style.display="";
   }catch(e){
