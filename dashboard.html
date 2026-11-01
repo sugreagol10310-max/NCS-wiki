@@ -25,7 +25,8 @@ main{max-width:1250px;margin:0 auto;padding:24px}
 .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:18px}
 .metric-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.metric{font-size:30px;font-weight:800;margin-top:7px}
+.metric{font-size:26px;font-weight:800;margin-top:7px}
+.metric-sub{font-size:11px;color:var(--muted);margin-top:4px}
 section{margin-top:24px}
 .section-title{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
 h2{font-size:20px;margin:0}.hint{font-size:12px;color:var(--muted)}
@@ -52,8 +53,11 @@ input[type=range]{width:min(600px,70vw)}
 .small-table th{color:var(--muted);font-weight:600;text-align:left}.small-table td:last-child,.small-table th:last-child{text-align:right}
 .gain{color:var(--good);font-weight:700}.empty{color:var(--muted);padding:12px 0;text-align:center}
 .champion-list{display:flex;flex-direction:column;gap:9px}
-.champion{display:grid;grid-template-columns:74px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#ffffff03}
-.champion-era{font-weight:800;color:var(--accent2)}.champion-title{font-weight:700}.champion-date{color:var(--muted);font-size:11px;text-align:right}
+.champion{display:grid;grid-template-columns:50px 74px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#ffffff03}
+.champion-era{font-weight:800;color:var(--accent2)}
+.champion-thumb{width:64px;height:36px;object-fit:cover;border-radius:4px;background:#1a202c;}
+.champion-title{font-weight:700}
+.champion-date{color:var(--muted);font-size:11px;text-align:right}
 .error{color:var(--danger);background:#2a1118;border:1px solid #57202c;padding:12px;border-radius:12px;white-space:pre-wrap}
 .loading{color:var(--muted);padding:20px 0}
 .btn-copy{font-size:12px;padding:5px 10px;background:var(--panel);border-color:var(--line);border-radius:8px}
@@ -66,8 +70,19 @@ input[type=range]{width:min(600px,70vw)}
 .added-date-main { flex:1; min-width:0; }
 .added-date-title { font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .added-date-meta { font-size:12px; color:var(--muted); margin-top:4px; }
-.toggle-label { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text); cursor:pointer; background:var(--panel2); border:1px solid var(--line); padding:6px 12px; border-radius:8px; }
-.toggle-group { display:inline-flex; gap:12px; align-items:center; flex-wrap:wrap; }
+
+/* TOP10用強調スタイル */
+.top10-row { background: rgba(125, 211, 252, 0.05); font-size: 15px; }
+.top10-card { display: flex; align-items: center; gap: 10px; }
+.top10-thumb { width: 56px; height: 32px; object-fit: cover; border-radius: 4px; background: #1a202c; flex-shrink: 0; }
+
+/* ジャンルTOPグリッド */
+.genre-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.genre-card { background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.genre-card-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+.genre-song-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+.genre-song-thumb { width: 40px; height: 22px; object-fit: cover; border-radius: 3px; background: #1a202c; flex-shrink: 0; }
+.genre-song-info { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* CSVエクスポート用スタイル */
 .export-group { display:flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--line); padding:4px 8px; border-radius:11px; }
@@ -79,7 +94,7 @@ input[type=range]{width:min(600px,70vw)}
   .race-row{grid-template-columns:28px 180px minmax(60px,1fr) 70px}
 }
 @media(max-width:600px){
-  main{padding:14px}.grid{grid-template-columns:1fr 1fr}.metric{font-size:23px}
+  main{padding:14px}.grid{grid-template-columns:1fr 1fr}.metric{font-size:20px}
   .race-row{grid-template-columns:24px 105px minmax(50px,1fr) 60px;gap:6px}
   .race-label{font-size:11px}.race-value{font-size:11px}.race-stage{height:520px}
   .header-inner{flex-direction:column;align-items:flex-start}
@@ -110,21 +125,24 @@ input[type=range]{width:min(600px,70vw)}
 
 <div class="grid">
   <div class="card"><div class="metric-label">登録曲数</div><div class="metric" id="songCount">—</div></div>
-  <div class="card"><div class="metric-label">総再生回数</div><div class="metric" id="totalPlays">—</div></div>
-  <div class="card"><div class="metric-label">総視聴時間</div><div class="metric" id="totalTime">—</div></div>
+  <div class="card">
+    <div class="metric-label">総再生回数</div>
+    <div class="metric" id="totalPlays">—</div>
+    <div class="metric-sub" id="totalPlaysGain">—</div>
+  </div>
+  <div class="card">
+    <div class="metric-label">総視聴時間</div>
+    <div class="metric" id="totalTime">—</div>
+    <div class="metric-sub" id="totalTimeGain">—</div>
+  </div>
   <div class="card"><div class="metric-label">記録日数</div><div class="metric" id="dayCount">—</div></div>
 </div>
 
-<!-- 楽曲追加日・世代日リスト -->
+<!-- 楽曲追加日リスト -->
 <section>
   <div class="section-title">
-    <h2>📅 楽曲追加日・世代日リスト</h2>
-    <div class="toggle-group">
-      <span class="hint">並び順:</span>
-      <label class="toggle-label"><input type="radio" name="sortOrder" value="oldest_generation" checked> 世代日(最古)</label>
-      <label class="toggle-label"><input type="radio" name="sortOrder" value="added_date"> 追加日</label>
-      <label class="toggle-label" style="margin-left: 8px;"><input type="checkbox" id="toggleGeneration" checked> 世代日も表示</label>
-    </div>
+    <h2>📅 楽曲追加日リスト</h2>
+    <span class="hint">追加日順</span>
   </div>
   <div class="card" style="max-height: 550px; overflow-y: auto;">
     <div id="addedDatesList" style="display:flex; flex-direction:column; gap:10px;"></div>
@@ -137,7 +155,7 @@ input[type=range]{width:min(600px,70vw)}
     <h2>🏆 視聴回数 TOP50</h2>
     <div>
       <button class="btn-copy" id="copyTop50">📋 テキスト形式でコピー</button>
-      <span class="hint">再生回数順 / 同数は同順位</span>
+      <span class="hint">TOP10は強調・詳細表示 / 11位以降は簡易表示</span>
     </div>
   </div>
   <div class="card" style="overflow-x:auto;">
@@ -152,46 +170,61 @@ input[type=range]{width:min(600px,70vw)}
 <section>
   <div class="section-title">
     <h2>⏱️ 視聴時間 TOP20</h2>
-    <span class="hint">累計総視聴時間順</span>
+    <span class="hint">TOP10は強調・サムネイル表示 / 11位以降は簡易表示</span>
   </div>
-  <div class="card" id="top20WatchTimeChart"></div>
+  <div class="card" style="overflow-x:auto;">
+    <table class="rank-table">
+      <thead><tr><th>#</th><th>曲名</th><th>好き度</th><th style="text-align:right">視聴時間</th></tr></thead>
+      <tbody id="top20WatchTimeTable"></tbody>
+    </table>
+  </div>
 </section>
 
-<!-- 直近1週間の増分 -->
+<!-- 直近1週間・1ヶ月の増分 -->
 <section>
-  <div class="section-title"><h2>📈 直近1週間のランキング</h2><span class="hint" id="weekRange">—</span></div>
-  <div class="two-col">
+  <div class="section-title"><h2>📈 期間別増加量ランキング</h2><span class="hint" id="weekRange">—</span></div>
+  <div class="two-col" style="margin-bottom: 18px;">
     <div class="card">
-      <h3>▶ 視聴回数の増加 TOP20</h3>
+      <h3>▶ 直近1週間: 視聴回数の増加 TOP20</h3>
       <table class="small-table"><thead><tr><th>#</th><th>曲名</th><th>増加量</th></tr></thead><tbody id="weeklyPlays"></tbody></table>
     </div>
     <div class="card">
-      <h3>⏱ 視聴時間の増加 TOP20</h3>
+      <h3>⏱ 直近1週間: 視聴時間の増加 TOP20</h3>
       <table class="small-table"><thead><tr><th>#</th><th>曲名</th><th>増加量</th></tr></thead><tbody id="weeklyTime"></tbody></table>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <h3>▶ 直近1ヶ月: 視聴回数の増加 TOP20</h3>
+      <table class="small-table"><thead><tr><th>#</th><th>曲名</th><th>増加量</th></tr></thead><tbody id="monthlyPlays"></tbody></table>
+    </div>
+    <div class="card">
+      <h3>⏱ 直近1ヶ月: 視聴時間の増加 TOP20</h3>
+      <table class="small-table"><thead><tr><th>#</th><th>曲名</th><th>増加量</th></tr></thead><tbody id="monthlyTime"></tbody></table>
     </div>
   </div>
 </section>
 
-<!-- 世代ごとの視聴回数 TOP1 -->
+<!-- 世代ごとの視聴回数 TOP5 -->
 <section>
-  <div class="section-title"><h2>👶 世代ごとの視聴回数 TOP1</h2><span class="hint">世代順 (0 → 1 → 2 ...)</span></div>
+  <div class="section-title"><h2>👶 世代ごとの視聴回数 TOP5</h2><span class="hint">世代順 (0 → 1 → 2 ...) 各世代上位5曲</span></div>
   <div class="card">
     <table class="small-table">
-      <thead><tr><th>世代</th><th>TOP1 曲名</th><th style="text-align:right">再生回数</th></tr></thead>
+      <thead><tr><th>世代</th><th>上位曲名一覧 (TOP5)</th></tr></thead>
       <tbody id="generationTop"></tbody>
     </table>
   </div>
 </section>
 
-<!-- ジャンルごとの視聴回数 TOP1 -->
+<!-- ジャンルごとの視聴回数 TOP3 (一般ジャンル & 公式ジャンル) -->
 <section>
-  <div class="section-title"><h2>🎸 ジャンルごとの視聴回数 TOP1</h2><span class="hint">各ジャンルの最高再生数曲</span></div>
-  <div class="card">
-    <table class="small-table">
-      <thead><tr><th>ジャンル</th><th>TOP1 曲名</th><th style="text-align:right">再生回数</th></tr></thead>
-      <tbody id="genreTop"></tbody>
-    </table>
-  </div>
+  <div class="section-title"><h2>🎸 ジャンル別 TOP3 ランキング</h2><span class="hint">一般ジャンル・公式ジャンル別 TOP3</span></div>
+  
+  <h3 style="margin: 16px 0 10px; font-size: 16px; color: var(--accent2);">一般ジャンル TOP3</h3>
+  <div class="genre-grid" id="generalGenreTop"></div>
+
+  <h3 style="margin: 24px 0 10px; font-size: 16px; color: var(--accent2);">公式ジャンル TOP3</h3>
+  <div class="genre-grid" id="officialGenreTop"></div>
 </section>
 
 <!-- 歴代好き度1位の変遷 -->
@@ -250,27 +283,136 @@ function competitionRanks(list, keyFn){
   return list.map((s,i)=>{let p=keyFn(s);if(p!==last)rank=i+1;last=p;return rank});
 }
 
+function getThumbnail(s){
+  if(s && s.youtubeId){
+    return `https://img.youtube.com/vi/${encodeURIComponent(s.youtubeId)}/mqdefault.jpg`;
+  }
+  return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiLz48L3N2Zz4=';
+}
+
+function getBaselineIndex(daysAgo){
+  if(!dates.length)return -1;
+  const latest=parseDate(dates[dates.length-1]);
+  const target=addDays(latest, -daysAgo);
+  let best=-1;
+  for(let i=0;i<dates.length;i++)if(parseDate(dates[i])<=target)best=i;
+  return best >= 0 ? best : 0;
+}
+
 /* 1. 概要表示 & TOP50 / TOP20 */
 function renderOverview(){
   const list=getSongList();
+  const totalPlaysVal = list.reduce((a,s)=>a+Number(s.playCount||0),0);
+  const totalTimeVal = list.reduce((a,s)=>a+Number(s.totalWatchTime||0),0);
+
   $("songCount").textContent=num(list.length);
-  $("totalPlays").textContent=num(list.reduce((a,s)=>a+Number(s.playCount||0),0));
-  $("totalTime").textContent=formatTime(list.reduce((a,s)=>a+Number(s.totalWatchTime||0),0));
+  $("totalPlays").textContent=num(totalPlaysVal);
+  $("totalTime").textContent=formatTime(totalTimeVal);
   $("dayCount").textContent=num(dates.length);
+
+  // 直近1週間・1ヶ月の全体の増加量を計算して上部カードに反映
+  if(dates.length >= 2) {
+    const latestDate = dates[dates.length - 1];
+    const wIndex = getBaselineIndex(7);
+    const mIndex = getBaselineIndex(30);
+    const wDate = dates[wIndex];
+    const mDate = dates[mIndex];
+
+    const calcGain = (baseD, curD, field) => {
+      const baseObj = history[baseD] || {};
+      const curObj = history[curD] || {};
+      let sum = 0;
+      for(const id of Object.keys(songs)) {
+        const cur = curObj[id]?.[field] ?? (songs[id]?.[field] || 0);
+        const base = baseObj[id]?.[field] ?? 0;
+        if(cur > base) sum += (cur - base);
+      }
+      return sum;
+    };
+
+    const wPlaysGain = calcGain(wDate, latestDate, "playCount");
+    const mPlaysGain = calcGain(mDate, latestDate, "playCount");
+    const wTimeGain = calcGain(wDate, latestDate, "totalWatchTime");
+    const mTimeGain = calcGain(mDate, latestDate, "totalWatchTime");
+
+    $("totalPlaysGain").textContent = `1週間: +${num(wPlaysGain)}回 / 1ヶ月: +${num(mPlaysGain)}回`;
+    $("totalTimeGain").textContent = `1週間: +${formatTime(wTimeGain)} / 1ヶ月: +${formatTime(mTimeGain)}`;
+  } else {
+    $("totalPlaysGain").textContent = "増加量データなし";
+    $("totalTimeGain").textContent = "増加量データなし";
+  }
+
+  // 直近1週間の増加量ランキング（再生回数）を計算し、順位 m を割り出す
+  let weeklyPlaysRankMap = {};
+  if(dates.length >= 2) {
+    const latestDate = dates[dates.length - 1];
+    const wIndex = getBaselineIndex(7);
+    const wDate = dates[wIndex];
+    const baseObj = history[wDate] || {};
+    const curObj = history[latestDate] || {};
+
+    const diffList = list.map(s => {
+      const cur = curObj[s.id]?.playCount ?? (s.playCount || 0);
+      const base = baseObj[s.id]?.playCount ?? 0;
+      return { id: s.id, delta: Math.max(0, cur - base) };
+    }).sort((a,b) => b.delta - a.delta);
+
+    let lastDelta = null, rank = 0;
+    diffList.forEach((item, idx) => {
+      if(item.delta !== lastDelta) rank = idx + 1;
+      lastDelta = item.delta;
+      weeklyPlaysRankMap[item.id] = rank;
+    });
+  }
 
   // 視聴回数 TOP50
   const playsSorted=[...list].sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0) || Number(a.order||0)-Number(b.order||0));
   const playRanks=competitionRanks(playsSorted, s=>Number(s.playCount||0));
-  
   const top50=playsSorted.slice(0,50);
-  $("rankingPlays50").innerHTML=top50.map((s,i)=>`
-    <tr>
-      <td class="rank">#${playRanks[i]}</td>
-      <td><a class="song-link" href="./index.html?id=${encodeURIComponent(s.id||"")}">${esc(s.title||"Unknown")}</a></td>
-      <td class="pref">#${Number(s.order||0)+1}</td>
-      <td class="plays">${num(s.playCount)} 回</td>
-    </tr>
-  `).join("");
+
+  $("rankingPlays50").innerHTML=top50.map((s,i)=>{
+    const n = playRanks[i];
+    const m = weeklyPlaysRankMap[s.id] || 9999;
+    const weeklyDelta = dates.length >= 2 ? ( (history[dates[dates.length-1]]?.[s.id]?.playCount ?? s.playCount) - (history[dates[getBaselineIndex(7)]]?.[s.id]?.playCount ?? 0) ) : 0;
+    
+    let colorStyle = "";
+    if (n > m + 5) {
+      colorStyle = "color: var(--accent); font-weight: 700;";
+    } else if (m > n + 5) {
+      colorStyle = "color: var(--danger); font-weight: 700;";
+    }
+
+    if (i < 10) {
+      // TOP10: 強調・サムネイル画像付き
+      const thumb = getThumbnail(s);
+      return `
+        <tr class="top10-row">
+          <td class="rank">#${n}</td>
+          <td>
+            <div class="top10-card">
+              <img src="${thumb}" class="top10-thumb" alt="thumb">
+              <div>
+                <a class="song-link" href="./index.html?id=${encodeURIComponent(s.id||"")}">${esc(s.title||"Unknown")}</a>
+                <div style="font-size:11px; color:var(--muted);">直近1週間: <span style="${colorStyle}">+${num(weeklyDelta)}回</span> (増加順位: #${m})</div>
+              </div>
+            </div>
+          </td>
+          <td class="pref">#${Number(s.order||0)+1}</td>
+          <td class="plays">${num(s.playCount)} 回</td>
+        </tr>
+      `;
+    } else {
+      // 11位以降: 簡易表示
+      return `
+        <tr>
+          <td class="rank">#${n}</td>
+          <td><a class="song-link" href="./index.html?id=${encodeURIComponent(s.id||"")}">${esc(s.title||"Unknown")}</a></td>
+          <td class="pref">#${Number(s.order||0)+1}</td>
+          <td class="plays">${num(s.playCount)} 回</td>
+        </tr>
+      `;
+    }
+  }).join("");
 
   $("copyTop50").onclick=()=>{
     const text=top50.map((s,i)=>`${playRanks[i]}. ${s.title||"Unknown"} - ${num(s.playCount)}回`).join("\n");
@@ -281,35 +423,52 @@ function renderOverview(){
     });
   };
 
-  // 視聴時間 TOP20
+  // 視聴時間 TOP20（TOP10は視聴回数同様に強調・サムネイル表示）
   const timeSorted=[...list].sort((a,b)=>Number(b.totalWatchTime||0)-Number(a.totalWatchTime||0));
+  const timeRanks=competitionRanks(timeSorted, s=>Number(s.totalWatchTime||0));
   const top20Time=timeSorted.slice(0,20);
-  const maxTime=Math.max(1,...top20Time.map(s=>Number(s.totalWatchTime||0)));
 
-  $("top20WatchTimeChart").innerHTML=top20Time.map((s,i)=>{
-    const w=Math.max(2,Number(s.totalWatchTime||0)/maxTime*100);
-    return `<div style="display:grid;grid-template-columns:35px minmax(140px,260px) 1fr 110px;gap:8px;align-items:center;margin:8px 0">
-      <b>#${i+1}</b>
-      <span title="${esc(s.title)}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-        <a class="song-link" href="./index.html?id=${encodeURIComponent(s.id)}">${esc(s.title)}</a>
-      </span>
-      <div style="height:18px;background:#202632;border-radius:6px;overflow:hidden"><div style="height:100%;width:${w}%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:6px"></div></div>
-      <b style="text-align:right">${formatTime(s.totalWatchTime)}</b>
-    </div>`;
+  $("top20WatchTimeTable").innerHTML=top20Time.map((s,i)=>{
+    const n = timeRanks[i];
+    if (i < 10) {
+      const thumb = getThumbnail(s);
+      return `
+        <tr class="top10-row">
+          <td class="rank">#${n}</td>
+          <td>
+            <div class="top10-card">
+              <img src="${thumb}" class="top10-thumb" alt="thumb">
+              <div>
+                <a class="song-link" href="./index.html?id=${encodeURIComponent(s.id||"")}">${esc(s.title||"Unknown")}</a>
+              </div>
+            </div>
+          </td>
+          <td class="pref">#${Number(s.order||0)+1}</td>
+          <td class="plays">${formatTime(s.totalWatchTime)}</td>
+        </tr>
+      `;
+    } else {
+      return `
+        <tr>
+          <td class="rank">#${n}</td>
+          <td><a class="song-link" href="./index.html?id=${encodeURIComponent(s.id||"")}">${esc(s.title||"Unknown")}</a></td>
+          <td class="pref">#${Number(s.order||0)+1}</td>
+          <td class="plays">${formatTime(s.totalWatchTime)}</td>
+        </tr>
+      `;
+    }
   }).join("");
 }
 
-/* 2. 世代別 TOP1 */
+/* 2. 世代別 TOP5 ＆ サムネイル */
 function renderGenerationTop(){
   const list=getSongList();
   const genMap={};
-  
   list.forEach(s=>{
     const g=s.generation!==undefined && s.generation!==null ? s.generation : "未設定";
     if(!genMap[g]) genMap[g]=[];
     genMap[g].push(s);
   });
-
   const keys=Object.keys(genMap).sort((a,b)=>{
     if(a==="未設定") return 1;
     if(b==="未設定") return -1;
@@ -317,74 +476,188 @@ function renderGenerationTop(){
   });
 
   $("generationTop").innerHTML=keys.map(g=>{
-    const topSong=genMap[g].sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0))[0];
+    const topSongs=genMap[g].sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0)).slice(0, 5);
+    const songsHtml = topSongs.map((s, idx) => {
+      const thumb = getThumbnail(s);
+      return `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:${idx===topSongs.length-1?0:6}px; font-size:13px;">
+          <span style="font-weight:700; width:22px; color:var(--muted);">#${idx+1}</span>
+          <img src="${thumb}" style="width:36px; height:20px; object-fit:cover; border-radius:3px; background:#1a202c;" alt="thumb">
+          <div style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            <a class="song-link" href="./index.html?id=${encodeURIComponent(s.id)}">${esc(s.title||"Unknown")}</a>
+          </div>
+          <div style="font-variant-numeric:tabular-nums; font-size:12px; color:var(--good);">${num(s.playCount)} 回</div>
+        </div>
+      `;
+    }).join("");
+
     return `<tr>
-      <td><b>第 ${esc(g)} 世代</b></td>
-      <td><a class="song-link" href="./index.html?id=${encodeURIComponent(topSong.id)}">${esc(topSong.title||"Unknown")}</a></td>
-      <td style="text-align:right" class="gain">${num(topSong.playCount)} 回</td>
+      <td style="vertical-align: top; width: 110px;"><b>第 ${esc(g)} 世代</b></td>
+      <td style="padding: 10px 6px;">${songsHtml}</td>
     </tr>`;
   }).join("");
 }
 
-/* 3. ジャンル別 TOP1 */
-function renderGenreTop(){
-  const list=getSongList();
-  const genreMap={};
-
-  list.forEach(s=>{
-    const g=s.genre || "未分類";
-    if(!genreMap[g]) genreMap[g]=[];
-    genreMap[g].push(s);
-  });
-
-  const keys=Object.keys(genreMap).sort();
-
-  $("genreTop").innerHTML=keys.map(g=>{
-    const topSong=genreMap[g].sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0))[0];
-    return `<tr>
-      <td><span class="tag" style="margin:0">${esc(g)}</span></td>
-      <td><a class="song-link" href="./index.html?id=${encodeURIComponent(topSong.id)}">${esc(topSong.title||"Unknown")}</a></td>
-      <td style="text-align:right" class="gain">${num(topSong.playCount)} 回</td>
-    </tr>`;
-  }).join("");
-}
-
-/* 4. 直近1週間ランキング (daily_historyベース) */
-function findBaselineIndex(){
-  if(!dates.length)return -1;
-  const latest=parseDate(dates[dates.length-1]);
-  const target=addDays(latest,-7);
-  let best=-1;
-  for(let i=0;i<dates.length;i++)if(parseDate(dates[i])<=target)best=i;
-  return best >= 0 ? best : 0;
-}
-
-function renderWeekly(){
+/* 3. 直近1週間・1ヶ月のランキング算出 */
+function renderWeeklyAndMonthly(){
   if(dates.length<2)return;
-  const latest=dates[dates.length-1], bi=findBaselineIndex(), base=dates[bi];
-  $("weekRange").textContent=`${base} → ${latest}`;
+  const latest=dates[dates.length-1];
   
-  const a=history[base]||{}, b=history[latest]||{};
-  const allSongIds=Object.keys(songs);
+  const wBi = getBaselineIndex(7);
+  const mBi = getBaselineIndex(30);
+  const wBase = dates[wBi];
+  const mBase = dates[mBi];
 
-  const make=(field,formatter)=>allSongIds.map(id=>{
+  $("weekRange").textContent=`比較基準: 1週間前(${wBase}) / 1ヶ月前(${mBase}) → 最新(${latest})`;
+  
+  const aW = history[wBase]||{}, aM = history[mBase]||{};
+  const b = history[latest]||{};
+  const allSongIds = Object.keys(songs);
+
+  const makeDelta=(baseObj, field, formatter)=>allSongIds.map(id=>{
     const cur = b[id]?.[field] ?? (songs[id]?.[field] || 0);
-    const old = a[id]?.[field] ?? 0;
+    const old = baseObj[id]?.[field] ?? 0;
     const delta = cur - old;
     if(delta <= 0) return null;
     return {id, delta, s:songs[id], text:formatter(delta)};
   }).filter(Boolean).sort((x,y)=>y.delta-x.delta).slice(0,20);
 
-  const plays=make("playCount",x=>num(x)+" 回");
-  const time=make("totalWatchTime",formatTime);
+  const wPlays = makeDelta(aW, "playCount", x=>num(x)+" 回");
+  const wTime  = makeDelta(aW, "totalWatchTime", formatTime);
+  const mPlays = makeDelta(aM, "playCount", x=>num(x)+" 回");
+  const mTime  = makeDelta(aM, "totalWatchTime", formatTime);
 
-  const table=(arr)=>arr.length?arr.map((x,i)=>`<tr><td>#${i+1}</td><td><a class="song-link" href="./index.html?id=${encodeURIComponent(x.s.id||x.id)}">${esc(x.s?.title||"Unknown")}</a></td><td class="gain">+${x.text}</td></tr>`).join(""):`<tr><td colspan="3" class="empty">この期間に増加したデータはありません。</td></tr>`;
+  const table=(arr)=>arr.length?arr.map((x,i)=>`<tr><td>#${i+1}</td><td><a class="song-link" href="./index.html?id=${encodeURIComponent(x.s.id||x.id)}">${esc(x.s?.title||"Unknown")}</a></td><td class="gain">+${x.text}</td></tr>`).join(""):`<tr><td colspan="3" class="empty">該当データなし</td></tr>`;
   
-  $("weeklyPlays").innerHTML=table(plays);
-  $("weeklyTime").innerHTML=table(time);
+  $("weeklyPlays").innerHTML=table(wPlays);
+  $("weeklyTime").innerHTML=table(wTime);
+  $("monthlyPlays").innerHTML=table(mPlays);
+  $("monthlyTime").innerHTML=table(mTime);
 }
 
-/* 履歴構築 (共通ロジック) */
+/* 4. ジャンル別 TOP3 ランキング（指定の見出しに変更） */
+function renderGenreTop3() {
+  const list = getSongList();
+
+  const hasGenre = (genres, target) => {
+    if (!Array.isArray(genres)) return false;
+    return genres.some(g => g.toLowerCase() === target.toLowerCase() || g.includes(target));
+  };
+
+  const matchGeneral = (genres, targetKey) => {
+    const has = (t) => hasGenre(genres, t);
+    switch(targetKey) {
+      case "DnB": return has("DnB");
+      case "Drumstep": return has("Drumstep");
+      case "MelodicDubstepOrChillstep": return has("Melodic Dubstep") || has("Chillstep");
+      case "Dubstep": return has("Dubstep") && !has("Melodic Dubstep") && !has("Chillstep");
+      case "FestivalProgressiveHouse": return has("Festival Progressive House");
+      case "ElectroHouse": return has("Electro House");
+      case "House": return has("House") && !has("Festival Progressive House") && !has("Electro House");
+      case "Trap": return has("Trap");
+      case "Others": {
+        const matched = has("DnB") || has("Drumstep") || has("Melodic Dubstep") || has("Chillstep") || 
+                        (has("Dubstep") && !has("Melodic Dubstep") && !has("Chillstep")) ||
+                        has("Festival Progressive House") || has("Electro House") || 
+                        (has("House") && !has("Festival Progressive House") && !has("Electro House")) || has("Trap");
+        return !matched;
+      }
+      default: return false;
+    }
+  };
+
+  const matchOfficial = (genres, targetKey) => {
+    const has = (t) => hasGenre(genres, t);
+    const officialList = [
+      "NCS-Red","NCS-Orange","NCS-Yellow","NCS-Green","NCS-Mint","NCS-Cyan",
+      "NCS-Blue","NCS-Purple","NCS-Magenta","NCS-White","NCS-Black",
+      "NCS-Teal","NCS-Lavender","NCS-Others","Monstercat"
+    ];
+
+    if(targetKey === "NCS-Others") {
+      return has("NCS-Others") || has("NCS-Teal") || has("NCS-Lavender");
+    }
+    if(targetKey === "Others") {
+      return !officialList.some(o => has(o));
+    }
+    return has(targetKey);
+  };
+
+  const renderCategoryCards = (categories, isOfficial) => {
+    return categories.map(cat => {
+      const filtered = list.filter(s => {
+        const genres = s.genres || [];
+        return isOfficial ? matchOfficial(genres, cat.key) : matchGeneral(genres, cat.key);
+      }).sort((a,b) => Number(b.playCount||0) - Number(a.playCount||0)).slice(0, 3);
+
+      let itemsHtml = "";
+      for(let i=0; i<3; i++) {
+        if(filtered[i]) {
+          const s = filtered[i];
+          const thumb = getThumbnail(s);
+          itemsHtml += `
+            <div class="genre-song-item">
+              <span style="font-weight:700; width:20px;">#${i+1}</span>
+              <img src="${thumb}" class="genre-song-thumb" alt="thumb">
+              <div class="genre-song-info">
+                <a class="song-link" href="./index.html?id=${encodeURIComponent(s.id)}">${esc(s.title)}</a>
+              </div>
+              <div style="font-variant-numeric:tabular-nums; font-size:12px; color:var(--good);">${num(s.playCount)}回</div>
+            </div>
+          `;
+        } else {
+          itemsHtml += `
+            <div class="genre-song-item" style="color: var(--muted);">
+              <span style="font-weight:700; width:20px;">#${i+1}</span>
+              <span>- (曲なし)</span>
+            </div>
+          `;
+        }
+      }
+
+      return `
+        <div class="genre-card">
+          <div class="genre-card-title">${esc(cat.label)}</div>
+          ${itemsHtml}
+        </div>
+      `;
+    }).join("");
+  };
+
+  const generalCategories = [
+    { label: "DnB", key: "DnB" },
+    { label: "Drumstep", key: "Drumstep" },
+    { label: "Melodic Dubstep / Chillstep", key: "MelodicDubstepOrChillstep" },
+    { label: "Brostep / Other Dubstep", key: "Dubstep" },
+    { label: "Festival Progressive House", key: "FestivalProgressiveHouse" },
+    { label: "Electro House", key: "ElectroHouse" },
+    { label: "Future House / Other House", key: "House" },
+    { label: "Trap", key: "Trap" },
+    { label: "Glitch Hop / Future Bass / Hard Dance / Others", key: "Others" }
+  ];
+
+  const officialCategories = [
+    { label: "NCS-Red", key: "NCS-Red" },
+    { label: "NCS-Orange", key: "NCS-Orange" },
+    { label: "NCS-Yellow", key: "NCS-Yellow" },
+    { label: "NCS-Green", key: "NCS-Green" },
+    { label: "NCS-Mint", key: "NCS-Mint" },
+    { label: "NCS-Cyan", key: "NCS-Cyan" },
+    { label: "NCS-Blue", key: "NCS-Blue" },
+    { label: "NCS-Purple", key: "NCS-Purple" },
+    { label: "NCS-Magenta", key: "NCS-Magenta" },
+    { label: "NCS-White", key: "NCS-White" },
+    { label: "NCS-Black", key: "NCS-Black" },
+    { label: "NCS-Others / Teal / Lavender", key: "NCS-Others" },
+    { label: "Monstercat", key: "Monstercat" },
+    { label: "NOT NCS", key: "Others" }
+  ];
+
+  $("generalGenreTop").innerHTML = renderCategoryCards(generalCategories, false);
+  $("officialGenreTop").innerHTML = renderCategoryCards(officialCategories, true);
+}
+
+/* 履歴構築ヘルパー */
 function buildHistory(raw){
   const out={};
   if(!raw)return out;
@@ -403,7 +676,7 @@ function buildHistory(raw){
   return out;
 }
 
-/* 5. 歴代「好き度 #1」の変遷 (analytics_history + daily_history を参照) */
+/* 5. 歴代「好き度 #1」の変遷（サムネイル付き） */
 function renderChampions(){
   const observations=[];
   for(const date of mergedDates){
@@ -420,142 +693,62 @@ function renderChampions(){
     else eras.push({id:o.id,start:o.date,end:o.date});
   }
   const list=eras.map((e,i)=>({...e,s:songs[e.id]}));
-  $("champions").innerHTML=list.length?list.map((e,i)=>`
-    <div class="champion">
-      <div class="champion-era">第${i+1}代</div>
-      <div class="champion-title"><a class="song-link" href="./index.html?id=${encodeURIComponent(e.id)}">${esc(e.s?.title||"Unknown")}</a></div>
-      <div class="champion-date">${e.start===e.end?e.start:e.start+" → "+e.end}</div>
-    </div>
-  `).join(""):`<div class="empty">order=0 の履歴がまだありません。</div>`;
+  $("champions").innerHTML=list.length?list.map((e,i)=>{
+    const thumb = getThumbnail(e.s);
+    return `
+      <div class="champion">
+        <div class="champion-era">第${i+1}代</div>
+        <img src="${thumb}" class="champion-thumb" alt="thumb">
+        <div class="champion-title"><a class="song-link" href="./index.html?id=${encodeURIComponent(e.id)}">${esc(e.s?.title||"Unknown")}</a></div>
+        <div class="champion-date">${e.start===e.end?e.start:e.start+" → "+e.end}</div>
+      </div>
+    `;
+  }).join(""):`<div class="empty">order=0 の履歴がまだありません。</div>`;
 }
 
-/* 6. 追加日・世代日リストの処理 (analytics_history + daily_history を参照) */
-function calculateAddedAndGenerationDates() {
-  const allIds = Object.keys(songs);
+/* 6. 追加日リストの処理（一本化） */
+function renderAddedDates() {
+  const list = getSongList();
   
-  const totalPlaysPerDate = {};
-  for(let i = 0; i < mergedDates.length; i++) {
-    const d = mergedDates[i];
-    let total = 0;
+  const songAddedMap = {};
+  for(const d of mergedDates) {
     const dayData = mergedHistory[d];
-    if(dayData) {
-      for(const id of allIds) {
-        total += (dayData[id]?.playCount || 0);
+    if(!dayData) continue;
+    for(const id of Object.keys(dayData)) {
+      if(!songAddedMap[id] && (dayData[id].playCount > 0 || dayData[id].order !== null)) {
+        songAddedMap[id] = d;
       }
     }
-    totalPlaysPerDate[d] = total;
   }
 
-  const results = [];
-
-  for (const id of allIds) {
-    const song = songs[id];
-    let addedDate = null;
-    let addedIndex = -1;
-
-    for(let i = 0; i < mergedDates.length; i++) {
-      const d = mergedDates[i];
-      const data = mergedHistory[d]?.[id];
-      if(data) {
-        if((data.playCount && data.playCount > 0) || (data.order !== null && data.order !== undefined)) {
-          addedDate = d;
-          addedIndex = i;
-          break;
-        }
-      }
-    }
-
-    if(!addedDate) continue; 
-
-    const generationDates = [];
-    
-    const getDeltaRatio = (startIndex) => {
-      if(startIndex < 0 || startIndex >= mergedDates.length) return null;
-      const startD = mergedDates[startIndex];
-      
-      let endIndex = Math.min(startIndex + 3, mergedDates.length - 1);
-      const endD = mergedDates[endIndex];
-
-      const sPlayStart = mergedHistory[startD]?.[id]?.playCount || 0;
-      const sPlayEnd = mergedHistory[endD]?.[id]?.playCount || 0;
-      const songDelta = Math.max(0, sPlayEnd - sPlayStart);
-
-      const tPlayStart = totalPlaysPerDate[startD] || 0;
-      const tPlayEnd = totalPlaysPerDate[endD] || 0;
-      const totalDelta = Math.max(0, tPlayEnd - tPlayStart);
-
-      if(totalDelta === 0) return null;
-      return songDelta / totalDelta;
-    };
-
-    const ratioStart = getDeltaRatio(addedIndex) || 0;
-
-    for (let i = addedIndex + 1; i <= mergedDates.length - 4; i++) {
-      const ratioX = getDeltaRatio(i);
-      if (ratioX !== null && ratioStart < ratioX * 0.5) {
-        generationDates.push(mergedDates[i]);
-      }
-    }
-
-    const title = song.title || "Unknown";
-
-    results.push({
-      id,
-      song,
-      addedDate,
-      generationDates,
-      oldestGenDate: generationDates.length > 0 ? generationDates[0] : addedDate,
-      title
-    });
-  }
-
-  const sortMode = document.querySelector('input[name="sortOrder"]:checked')?.value || "oldest_generation";
-
-  results.sort((a, b) => {
-    if (sortMode === "oldest_generation") {
-      if(a.oldestGenDate !== b.oldestGenDate) return a.oldestGenDate.localeCompare(b.oldestGenDate);
-      if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
-    } else {
-      if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
-      if(a.oldestGenDate !== b.oldestGenDate) return a.oldestGenDate.localeCompare(b.oldestGenDate);
-    }
+  const items = list.map(s => ({
+    id: s.id,
+    song: s,
+    addedDate: songAddedMap[s.id] || "不明",
+    title: s.title || "Unknown"
+  })).sort((a, b) => {
+    if(a.addedDate !== b.addedDate) return a.addedDate.localeCompare(b.addedDate);
     return a.title.localeCompare(b.title);
   });
 
-  return results;
-}
-
-function renderAddedDates() {
-  const list = calculateAddedAndGenerationDates();
-  const showGen = $("toggleGeneration").checked;
   const container = $("addedDatesList");
-  
-  if(!list.length) {
+  if(!items.length) {
     container.innerHTML = '<div class="empty">データがありません。</div>';
     return;
   }
 
-  container.innerHTML = list.map((item, index) => {
-    const s = item.song;
+  container.innerHTML = items.map((item, index) => {
     const rank = String(index + 1).padStart(3, '0');
-    
-    const thumbUrl = s.youtubeId 
-      ? `https://img.youtube.com/vi/${encodeURIComponent(s.youtubeId)}/mqdefault.jpg` 
-      : 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiLz48L3N2Zz4=';
-
-    let dateText = `(${item.addedDate})`;
-    if (showGen && item.generationDates.length > 0) {
-      dateText = `(追加: ${item.addedDate}, 世代: ${item.generationDates.join(', ')})`;
-    }
+    const thumbUrl = getThumbnail(item.song);
 
     return `
       <div class="added-date-item">
-        <img src="${thumbUrl}" alt="Thumbnail" class="added-date-thumb" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiIGZpbGw9IiMzMzMiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iOTAiLz48L3N2Zz4='">
+        <img src="${thumbUrl}" alt="Thumbnail" class="added-date-thumb" onerror="this.src='data:image/svg+xml;base64,...'">
         <div class="added-date-main">
           <div class="added-date-title">
             #${rank} <a class="song-link" href="./index.html?id=${encodeURIComponent(item.id)}">${esc(item.title)}</a>
           </div>
-          <div class="added-date-meta">${esc(dateText)}</div>
+          <div class="added-date-meta">追加日: ${esc(item.addedDate)}</div>
         </div>
       </div>
     `;
@@ -568,24 +761,16 @@ function exportHistoryToCSV() {
     alert("出力できるデータがありません。");
     return;
   }
-
-  const metric = $("csvMetric").value; // "playCount" または "totalWatchTime"
-  const metricLabel = metric === "playCount" ? "再生回数" : "視聴時間(秒)";
-
-  // 最新日付の取得
+  const metric = $("csvMetric").value;
   const endDateStr = mergedDates[mergedDates.length - 1];
   const endDate = parseDate(endDateStr);
-
-  // 5/12の初期化：最新年の5/12、あるいは最古データがそれより新しい場合は最古データの年
   let startYear = parseDate(mergedDates[0]).getFullYear();
   let startDate = new Date(`${startYear}-05-12T00:00:00`);
 
-  // もしデータ内の最古日付がスタートより後で、かつmergedDates内に5/12が含まれる場合調整
   if (endDate < startDate) {
     startDate = new Date(`${endDate.getFullYear()}-05-12T00:00:00`);
   }
 
-  // 日付リスト（列）の生成: startDate から endDate まで1日刻み
   const dateList = [];
   let curr = new Date(startDate.getTime());
   while (curr <= endDate) {
@@ -594,48 +779,37 @@ function exportHistoryToCSV() {
   }
 
   if (!dateList.length) {
-    alert("指定期間(5/12〜現在)のデータが存在しません。");
+    alert("指定期間のデータが存在しません。");
     return;
   }
 
   const allSongIds = Object.keys(songs);
-  
-  // CSVヘッダー作成
   const headers = ["曲名", ...dateList];
   const rows = [headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",")];
 
-  // 曲ごとの行データを作成
   for (const id of allSongIds) {
     const songTitle = songs[id]?.title || id;
     const row = [`"${songTitle.replace(/"/g, '""')}"`];
-    
     let lastValue = 0;
     
-    // 5/12より前の最新データを初期値として探索
     for (let i = 0; i < mergedDates.length; i++) {
       if (mergedDates[i] < dateList[0]) {
         const val = mergedHistory[mergedDates[i]]?.[id]?.[metric];
-        if (val !== null && val !== undefined) {
-          lastValue = val;
-        }
+        if (val !== null && val !== undefined) lastValue = val;
       } else {
         break;
       }
     }
 
-    // 5/12 〜 最新日 までの各日の値を探索（データがなければ直前値を流用）
     for (const d of dateList) {
       const val = mergedHistory[d]?.[id]?.[metric];
-      if (val !== null && val !== undefined) {
-        lastValue = val;
-      }
+      if (val !== null && val !== undefined) lastValue = val;
       row.push(lastValue);
     }
-
     rows.push(row.join(","));
   }
 
-  const csvContent = "\uFEFF" + rows.join("\r\n"); // UTF-8 BOM付き
+  const csvContent = "\uFEFF" + rows.join("\r\n");
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -647,7 +821,7 @@ function exportHistoryToCSV() {
   URL.revokeObjectURL(url);
 }
 
-/* ---------- Bar chart race (daily_historyベース) ---------- */
+/* ---------- Bar chart race ---------- */
 let raceRows={};
 function getRaceFrameData(dateIndex,t){
   const d0=dates[dateIndex],d1=dates[Math.min(dateIndex+1,dates.length-1)];
@@ -735,32 +909,22 @@ async function load(){
     const rawDaily = await get("/music_chart/daily_history") || {};
     const rawAnalytics = await get("/music_chart/analytics_history") || {};
     
-    // 基本の履歴 (daily_history)
     history=buildHistory(rawDaily);
     dates=Object.keys(history).sort();
     currentDateIndex=Math.max(0,dates.length-1);
     
-    // 統合履歴の作成 (analytics_history と daily_history をマージ)
     const combinedRaw = { ...rawAnalytics, ...rawDaily };
     mergedHistory = buildHistory(combinedRaw);
     mergedDates = Object.keys(mergedHistory).sort();
     
     renderOverview();
     renderGenerationTop();
-    renderGenreTop();
-    renderWeekly();
-
-    // 拡張された統合データ (mergedHistory) を使用する機能
+    renderWeeklyAndMonthly();
+    renderGenreTop3();
     renderChampions(); 
     renderAddedDates();
-    $("toggleGeneration").onchange = renderAddedDates;
-    document.querySelectorAll('input[name="sortOrder"]').forEach(radio => {
-      radio.onchange = renderAddedDates;
-    });
-
     setupRace();
 
-    // CSV出力ボタンのイベント設定
     $("exportCsv").onclick = exportHistoryToCSV;
 
     $("message").style.display="none";$("app").style.display="";
