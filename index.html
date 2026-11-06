@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NCS Wiki — Song · MVP-3'</title>
+  <title>NCS Wiki — Song Details</title>
   
   <!-- Chart.js & Zoom Plugin -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -22,6 +22,7 @@
       --accent: #7dd3fc;
       --accent-2: #a78bfa;
       --danger: #fb7185;
+      --good: #86efac;
       --shadow: 0 18px 60px rgba(0, 0, 0, .28);
       --radius: 20px;
     }
@@ -146,7 +147,6 @@
       border-radius: 16px;
       padding: 12px;
     }
-    .chart-empty { height: 100%; display:grid; place-items:center; color:var(--muted); text-align:center; }
     
     .stats-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:14px; }
     .mini-stat { padding:14px; background:rgba(255,255,255,.025); border-radius:14px; border:1px solid rgba(255,255,255,.05); }
@@ -244,7 +244,8 @@
     .search-result-rank { text-align: right; white-space: nowrap; color: #cfeeff; font-size: 12px; font-weight: 700; }
     .search-empty { color: var(--muted); font-size: 12px; padding: 8px 2px 2px; }
     .ranking-note { margin-top: 9px; color: var(--muted); font-size: 11px; line-height: 1.5; }
-    .ranking-highlight { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
+    
+    .ranking-highlight { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
     .rank-card {
       position: relative; overflow: hidden; padding: 17px 18px; border-radius: 16px;
       border: 1px solid rgba(255,255,255,.08);
@@ -252,10 +253,13 @@
     }
     .rank-card.personal { background: linear-gradient(145deg, rgba(167,139,250,.11), rgba(255,255,255,.025)); }
     .rank-card .label { font-size: 11px; }
-    .rank-card .rank-number { margin-top: 3px; font-size: 34px; line-height: 1; font-weight: 850; letter-spacing: -.045em; }
+    .rank-card .rank-number { margin-top: 3px; font-size: 28px; line-height: 1; font-weight: 850; letter-spacing: -.045em; }
     .rank-card .rank-caption { margin-top: 6px; font-size: 11px; color: var(--muted); }
-    .rank-card .rank-icon { position: absolute; right: 14px; top: 10px; font-size: 24px; opacity: .72; }
+    .rank-card .rank-icon { position: absolute; right: 14px; top: 10px; font-size: 20px; opacity: .72; }
 
+    @media (max-width: 900px) {
+      .ranking-highlight { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     @media (max-width: 720px) {
       .wrap { width: min(100% - 20px, 1100px); padding-top: 18px; }
       .hero { padding: 22px; border-radius: 16px; }
@@ -318,7 +322,8 @@
           </div>
         </div>
 
-        <div class="ranking-highlight">
+        <!-- 各種詳細ランキング・指標カード群 -->
+        <div class="ranking-highlight" id="rankingHighlightGrid">
           <div class="rank-card">
             <div class="rank-icon">▶</div>
             <div class="label">Overall Play Rank</div>
@@ -331,10 +336,52 @@
             <div class="rank-number" id="personalRank">—</div>
             <div class="rank-caption">ORDER + 1</div>
           </div>
+          <div class="rank-card">
+            <div class="rank-icon">⏱</div>
+            <div class="label">Overall Play Rank (視聴時間)</div>
+            <div class="rank-number" id="timeRank">—</div>
+            <div class="rank-caption" id="timeRankCaption">—</div>
+          </div>
+          <div class="rank-card">
+            <div class="rank-icon">📈</div>
+            <div class="label">直近1週間の視聴回数順位</div>
+            <div class="rank-number" id="weeklyRank">—</div>
+            <div class="rank-caption" id="weeklyRankCaption">—</div>
+          </div>
+          <div class="rank-card">
+            <div class="rank-icon">📅</div>
+            <div class="label">直近1ヶ月の視聴回数順位</div>
+            <div class="rank-number" id="monthlyRank">—</div>
+            <div class="rank-caption" id="monthlyRankCaption">—</div>
+          </div>
+          <div class="rank-card">
+            <div class="rank-icon">👶</div>
+            <div class="label">世代ごとの視聴回数順位</div>
+            <div class="rank-number" id="generationRank">—</div>
+            <div class="rank-caption" id="generationRankCaption">—</div>
+          </div>
+          <div class="rank-card">
+            <div class="rank-icon">🚀</div>
+            <div class="label">1週間前の順位からの上昇</div>
+            <div class="rank-number" id="rankDiff">—</div>
+            <div class="rank-caption" id="rankDiffCaption">前週比の順位変動</div>
+          </div>
+          <div class="rank-card">
+            <div class="rank-icon">💿</div>
+            <div class="label">リリース年ごとの順位</div>
+            <div class="rank-number" id="yearRank">—</div>
+            <div class="rank-caption" id="yearRankCaption">—</div>
+          </div>
+          <div class="rank-card">
+            <div class="rank-icon">🎸</div>
+            <div class="label">Genre別 Play Rank</div>
+            <div class="rank-number" id="genreRanksContainer" style="font-size:18px; font-weight:700; margin-top:4px;">—</div>
+            <div class="rank-caption">各ジャンル内での視聴回数順位</div>
+          </div>
         </div>
 
-        <div class="tags" style="margin-top:16px">
-          <span class="tag" id="genreTag">Genre: —</span>
+        <div class="tags" style="margin-top:20px" id="genreTagsWrap">
+          <!-- 複数ジャンル対応タグ -->
         </div>
 
         <div class="tags" id="moods"></div>
@@ -345,7 +392,7 @@
         </div>
       </section>
 
-      <!-- 1 & 4. 視聴回数変遷 ＆ 予測機能 -->
+      <!-- 4. 視聴回数変遷グラフ（日付ギャップ対応） -->
       <section class="section">
         <div class="section-card">
           <div class="section-header-flex">
@@ -361,11 +408,11 @@
           <div class="chart-box">
             <canvas id="playChartCanvas"></canvas>
           </div>
-          <div class="note" id="historyNote">The graph uses stored snapshots from <code>analytics_history</code> and <code>daily_history</code>. (ホイールスクロールやドラッグで拡大・縮小・移動が可能です)</div>
+          <div class="note" id="historyNote">The graph uses stored snapshots with gap handling. (ホイールスクロールやドラッグで拡大・縮小・移動が可能です)</div>
         </div>
       </section>
 
-      <!-- 3. 好き度ランキング変遷グラフ -->
+      <!-- 好き度ランキング変遷グラフ -->
       <section class="section">
         <div class="section-card">
           <div class="section-header-flex">
@@ -382,7 +429,7 @@
         </div>
       </section>
 
-      <!-- 2. マイルストーン（回数ベース＆時間ベース） -->
+      <!-- マイルストーン -->
       <section class="section">
         <div class="section-card">
           <h2>Milestones</h2>
@@ -408,6 +455,7 @@
           <h2>Basic Information</h2>
           <div class="meta-grid">
             <div class="meta-item"><div class="label">Year</div><div class="value" id="year">—</div></div>
+            <div class="meta-item"><div class="label">Generation</div><div class="value" id="generation">—</div></div>
             <div class="meta-item"><div class="label">Added Date</div><div class="value" id="addedDate">—</div></div>
             <div class="meta-item"><div class="label">Duration</div><div class="value" id="duration">—</div></div>
             <div class="meta-item"><div class="label">Song ID</div><div class="value" id="songId">—</div></div>
@@ -425,7 +473,9 @@
     const DEFAULT_SONG_ID = "1785407081629";
 
     let allSongs = {};
+    let allHistoryDaily = {};
     let playRankMap = {};
+    let timeRankMap = {};
     let currentHistoryRows = [];
     let showMovingAverage = true;
 
@@ -477,6 +527,17 @@
       return [];
     }
 
+    // ジャンルを確実に配列として正規化する関数
+    function normalizeGenres(song) {
+      if (Array.isArray(song.genres)) return song.genres.filter(Boolean);
+      if (song.genre) {
+        if (typeof song.genre === "string") {
+          return song.genre.split(/,|\/|&/).map(g => g.trim()).filter(Boolean);
+        }
+      }
+      return ["Unknown"];
+    }
+
     function splitArtistTitle(title) {
       if (typeof title !== "string") return { artist: "", song: "" };
       const index = title.indexOf(" - ");
@@ -484,26 +545,128 @@
       return { artist: title.slice(0, index), song: title.slice(index + 3) };
     }
 
-    function calculatePlayRanks(songs) {
-      const entries = Object.entries(songs || {})
-        .map(([id, song]) => ({
-          id,
-          plays: Number(song?.playCount)
-        }))
-        .filter(row => Number.isFinite(row.plays))
-        .sort((a, b) => b.plays - a.plays || a.id.localeCompare(b.id));
+    // 全曲データから各種ランキングを算出
+    function calculateAllRanks(songs, dailyHistory) {
+      const songList = Object.entries(songs || {}).map(([id, s]) => ({ id, ...s }));
 
-      const ranks = {};
-      let previousPlays = null;
-      let currentRank = 0;
-      entries.forEach((row, index) => {
-        if (row.plays !== previousPlays) {
-          currentRank = index + 1;
-          previousPlays = row.plays;
-        }
-        ranks[row.id] = { rank: currentRank, total: entries.length, plays: row.plays };
+      // 1. Overall Play Rank (再生回数ベース)
+      const playSorted = [...songList].sort((a, b) => Number(b.playCount || 0) - Number(a.playCount || 0));
+      const playRanks = {};
+      playSorted.forEach((s, idx) => { playRanks[s.id] = { rank: idx + 1, total: songList.length }; });
+
+      // 2. Overall Time Rank (視聴時間ベース)
+      const timeSorted = [...songList].sort((a, b) => Number(b.totalWatchTime || 0) - Number(a.totalWatchTime || 0));
+      const timeRanks = {};
+      timeSorted.forEach((s, idx) => { timeRanks[s.id] = { rank: idx + 1, total: songList.length }; });
+
+      // 3. 直近1週間 / 1ヶ月の視聴回数増加順位
+      const dates = Object.keys(dailyHistory || {}).sort();
+      let weeklyRanks = {};
+      let monthlyRanks = {};
+      let rankDiffs = {}; // 1週間前からのOverall順位変動
+
+      if (dates.length >= 2) {
+        const latestDate = dates[dates.length - 1];
+        const latestObj = dailyHistory[latestDate]?.songs || {};
+
+        // 1週間前 (7日前)、1ヶ月前 (30日前) の日付を探す
+        const getBaselineDate = (daysAgo) => {
+          const latestD = new Date(latestDate + "T00:00:00Z");
+          const targetD = new Date(latestD.getTime() - daysAgo * 86400000);
+          let best = dates[0];
+          for (const d of dates) {
+            if (d <= targetD.toISOString().split("T")[0]) best = d;
+          }
+          return best;
+        };
+
+        const wDate = getBaselineDate(7);
+        const mDate = getBaselineDate(30);
+        const wObj = dailyHistory[wDate]?.songs || {};
+        const mObj = dailyHistory[mDate]?.songs || {};
+
+        // 1週間前全体の順位計算用
+        const wBasePlaysMap = {};
+        songList.forEach(s => {
+          wBasePlaysMap[s.id] = wObj[s.id]?.playCount ?? 0;
+        });
+        const wSortedForOverall = [...songList].sort((a, b) => wBasePlaysMap[b.id] - wBasePlaysMap[a.id]);
+        const wOverallRanks = {};
+        wSortedForOverall.forEach((s, idx) => { wOverallRanks[s.id] = idx + 1; });
+
+        // 週次増加量ランキング
+        const weeklyDiffs = songList.map(s => {
+          const cur = latestObj[s.id]?.playCount ?? (s.playCount || 0);
+          const base = wObj[s.id]?.playCount ?? 0;
+          return { id: s.id, delta: Math.max(0, cur - base) };
+        }).sort((a, b) => b.delta - a.delta);
+        weeklyDiffs.forEach((item, idx) => { weeklyRanks[item.id] = idx + 1; });
+
+        // 月次増加量ランキング
+        const monthlyDiffs = songList.map(s => {
+          const cur = latestObj[s.id]?.playCount ?? (s.playCount || 0);
+          const base = mObj[s.id]?.playCount ?? 0;
+          return { id: s.id, delta: Math.max(0, cur - base) };
+        }).sort((a, b) => b.delta - a.delta);
+        monthlyDiffs.forEach((item, idx) => { monthlyRanks[item.id] = idx + 1; });
+
+        // 1週間前のOverall順位との差 (上昇幅 = 1週間前の順位 - 現在の順位。プラスなら上昇)
+        songList.forEach(s => {
+          const curR = playRanks[s.id]?.rank;
+          const oldR = wOverallRanks[s.id];
+          if (curR && oldR) {
+            rankDiffs[s.id] = oldR - curR;
+          } else {
+            rankDiffs[s.id] = 0;
+          }
+        });
+      }
+
+      // 4. 世代ごとの視聴回数順位
+      const genGroups = {};
+      songList.forEach(s => {
+        const g = s.generation !== undefined && s.generation !== null ? s.generation : "未設定";
+        if (!genGroups[g]) genGroups[g] = [];
+        genGroups[g].push(s);
       });
-      return ranks;
+      const generationRanks = {};
+      Object.values(genGroups).forEach(group => {
+        group.sort((a, b) => Number(b.playCount || 0) - Number(a.playCount || 0));
+        group.forEach((s, idx) => { generationRanks[s.id] = { rank: idx + 1, total: group.length, generation: s.generation }; });
+      });
+
+      // 5. リリース年ごとの順位
+      const yearGroups = {};
+      songList.forEach(s => {
+        const y = s.year ? String(s.year) : "不明";
+        if (!yearGroups[y]) yearGroups[y] = [];
+        yearGroups[y].push(s);
+      });
+      const yearRanks = {};
+      Object.values(yearGroups).forEach(group => {
+        group.sort((a, b) => Number(b.playCount || 0) - Number(a.playCount || 0));
+        group.forEach((s, idx) => { yearRanks[s.id] = { rank: idx + 1, total: group.length, year: s.year }; });
+      });
+
+      // 6. ジャンル別 Play Rank (複数ジャンル対応)
+      const genreSongMap = {};
+      songList.forEach(s => {
+        const genres = normalizeGenres(s);
+        genres.forEach(g => {
+          if (!genreSongMap[g]) genreSongMap[g] = [];
+          genreSongMap[g].push(s);
+        });
+      });
+      const genreRanksAll = {};
+      Object.entries(genreSongMap).forEach(([genre, gSongs]) => {
+        gSongs.sort((a, b) => Number(b.playCount || 0) - Number(a.playCount || 0));
+        gSongs.forEach((s, idx) => {
+          if (!genreRanksAll[s.id]) genreRanksAll[s.id] = {};
+          genreRanksAll[s.id][genre] = { rank: idx + 1, total: gSongs.length };
+        });
+      });
+
+      return { playRanks, timeRanks, weeklyRanks, monthlyRanks, generationRanks, yearRanks, rankDiffs, genreRanksAll };
     }
 
     function renderSearchResults(query) {
@@ -521,8 +684,8 @@
         .filter(([id, song]) => {
           const title = String(song?.title || "").toLowerCase();
           const artist = splitArtistTitle(song?.title || "").artist.toLowerCase();
-          const genre = String(song?.genre || "").toLowerCase();
-          return title.includes(q) || artist.includes(q) || genre.includes(q) || id.includes(q);
+          const genres = normalizeGenres(song).join(" ").toLowerCase();
+          return title.includes(q) || artist.includes(q) || genres.includes(q) || id.includes(q);
         })
         .map(([id, song]) => ({
           id,
@@ -559,16 +722,14 @@
         img.src = item.song?.youtubeId
           ? `https://img.youtube.com/vi/${encodeURIComponent(item.song.youtubeId)}/mqdefault.jpg`
           : "";
-        img.addEventListener("error", () => {
-          img.style.visibility = "hidden";
-        });
+        img.addEventListener("error", () => { img.style.visibility = "hidden"; });
 
         const main = document.createElement("div");
         main.className = "search-result-main";
         const parsed = splitArtistTitle(item.song?.title || "");
         main.innerHTML = `
           <div class="search-result-title">${escapeHtml(parsed.song || item.song?.title || "Untitled")}</div>
-          <div class="search-result-sub">${escapeHtml(parsed.artist || "Unknown artist")} · ${escapeHtml(item.song?.genre || "Genre unknown")}</div>
+          <div class="search-result-sub">${escapeHtml(parsed.artist || "Unknown artist")} · ${escapeHtml(normalizeGenres(item.song).join(", "))}</div>
         `;
 
         const rank = document.createElement("div");
@@ -592,10 +753,19 @@
       }
     }
 
-    async function loadAllSongs() {
-      allSongs = await fetchJson("music_chart/songs");
-      if (!allSongs || typeof allSongs !== "object") allSongs = {};
-      playRankMap = calculatePlayRanks(allSongs);
+    async function loadAllData() {
+      const [songs, dailyHistory] = await Promise.all([
+        fetchJson("music_chart/songs"),
+        fetchJson("music_chart/daily_history")
+      ]);
+      allSongs = songs && typeof songs === "object" ? songs : {};
+      allHistoryDaily = dailyHistory && typeof dailyHistory === "object" ? dailyHistory : {};
+      
+      const computedRanks = calculateAllRanks(allSongs, allHistoryDaily);
+      playRankMap = computedRanks.playRanks;
+      timeRankMap = computedRanks.timeRanks;
+      window.computedRanksCache = computedRanks;
+
       $("searchNote").textContent = `全${formatNumber(Object.keys(allSongs).length)}曲から検索できます。`;
     }
 
@@ -617,11 +787,10 @@
       return response.json();
     }
 
-    // analytics_history と daily_history を統合・マージする関数
+    // analytics_history と daily_history の統合
     function extractSongCombinedHistory(analyticsHistory, dailyHistory, songId) {
       const combinedMap = new Map();
 
-      // 1. analytics_history の抽出
       if (analyticsHistory && typeof analyticsHistory === "object") {
         for (const [date, day] of Object.entries(analyticsHistory)) {
           if (!day || typeof day !== "object") continue;
@@ -643,7 +812,6 @@
         }
       }
 
-      // 2. daily_history の抽出（同一日付がある場合はマージまたは上書き）
       if (dailyHistory && typeof dailyHistory === "object") {
         for (const [date, day] of Object.entries(dailyHistory)) {
           if (!day || typeof day !== "object") continue;
@@ -655,7 +823,6 @@
           const rank = Number.isFinite(orderNum) ? orderNum + 1 : null;
 
           const existing = combinedMap.get(date) || {};
-
           combinedMap.set(date, {
             date,
             plays: Number.isFinite(plays) ? plays : (existing.plays ?? null),
@@ -672,17 +839,15 @@
       return rows;
     }
 
-    // 追加日（最も古いデータが存在する日付）を算出する関数
     function getAddedDate(rows) {
       if (!rows || !rows.length) return "—";
-      // 視聴回数または好き度順位のデータが存在する最初のレコードを探す
       const validRows = rows.filter(r => r.plays !== null || r.rank !== null);
       if (!validRows.length) return "—";
       return formatDate(validRows[0].date);
     }
 
-    // 日付の抜けを補完するヘルパー関数
-    function fillMissingDatesForRank(rows) {
+    // 日付の抜けを補完するヘルパー (ランク・視聴回数共通ギャップ対応)
+    function fillMissingDates(rows, valueKey) {
       if (!rows.length) return [];
       const dataMap = new Map(rows.map(r => [r.date, r]));
       const filled = [];
@@ -695,14 +860,9 @@
         if (dataMap.has(dateStr)) {
           filled.push(dataMap.get(dateStr));
         } else {
-          filled.push({
-            date: dateStr,
-            plays: null,
-            rank: null,
-            totalWatchTime: null,
-            timestamp: curr.getTime(),
-            sourceType: 'filled'
-          });
+          const emptyObj = { date: dateStr, sourceType: 'filled' };
+          emptyObj[valueKey] = null;
+          filled.push(emptyObj);
         }
         curr.setUTCDate(curr.getUTCDate() + 1);
       }
@@ -735,10 +895,7 @@
       const n = points.length;
       let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
       for (const p of points) {
-        sumX += p.x;
-        sumY += p.y;
-        sumXY += p.x * p.y;
-        sumXX += p.x * p.x;
+        sumX += p.x; sumY += p.y; sumXY += p.x * p.y; sumXX += p.x * p.x;
       }
 
       const denominator = (n * sumXX - sumX * sumX);
@@ -820,20 +977,19 @@
         tbody.appendChild(tr);
       }
       table.appendChild(tbody);
-      const wrap = $("historyTableWrap");
-      wrap.replaceChildren(table);
+      $("historyTableWrap").replaceChildren(table);
     }
 
-    // Chart.js: 視聴回数グラフ（ズーム・パン対応）
-    function renderChart(rows) {
-      const validRows = rows.filter(r => r.plays !== null);
+    // Chart.js: 視聴回数グラフ（日付ギャップ対応・spanGaps: falseでデータを繋がない）
+    function renderPlayChart(rows) {
       if (playChartInstance) { playChartInstance.destroy(); playChartInstance = null; }
 
+      const filledRows = fillMissingDates(rows, 'plays');
       const ctx = $('playChartCanvas').getContext('2d');
-      if (!validRows.length) return;
+      if (!filledRows.length) return;
 
-      const labels = validRows.map(r => formatDate(r.date));
-      const data = validRows.map(r => r.plays);
+      const labels = filledRows.map(r => formatDate(r.date));
+      const data = filledRows.map(r => r.plays);
 
       playChartInstance = new Chart(ctx, {
         type: 'line',
@@ -845,10 +1001,11 @@
             borderColor: '#7dd3fc',
             backgroundColor: 'rgba(125, 211, 252, 0.1)',
             borderWidth: 2,
-            pointRadius: validRows.length > 60 ? 2 : 4,
+            pointRadius: filledRows.length > 60 ? 1 : 3,
             pointHoverRadius: 6,
             fill: true,
-            tension: 0.1
+            tension: 0.1,
+            spanGaps: false // データの無い日は繋がずにギャップを空ける
           }]
         },
         options: {
@@ -858,7 +1015,10 @@
             legend: { display: false },
             tooltip: {
               callbacks: {
-                label: (ctx) => ` 視聴回数: ${formatNumber(ctx.raw)}`
+                label: (ctx) => {
+                  if (ctx.raw === null) return null;
+                  return ` 視聴回数: ${formatNumber(ctx.raw)}`;
+                }
               }
             },
             zoom: {
@@ -884,12 +1044,11 @@
       });
     }
 
-    // Chart.js: 好き度ランキング変遷グラフ（ズーム・パン対応・14日移動平均・日付補完）
+    // Chart.js: 好き度ランキング変遷グラフ
     function renderRankChart(rows) {
       if (rankChartInstance) { rankChartInstance.destroy(); rankChartInstance = null; }
 
-      // 日付の抜けを補完（中間データなしの日は rank=null）
-      const filledRows = fillMissingDatesForRank(rows);
+      const filledRows = fillMissingDates(rows, 'rank');
       const ctx = $('rankChartCanvas').getContext('2d');
       if (!filledRows.length) return;
 
@@ -908,10 +1067,9 @@
         },
         pointHoverRadius: 6,
         tension: 0.1,
-        spanGaps: true // nullの期間をスキップして直線で結ぶ
+        spanGaps: true
       }];
 
-      // 14日移動平均線の計算
       const windowSize = 14;
       if (showMovingAverage && filledRows.length >= windowSize) {
         const maData = filledRows.map((_, i) => {
@@ -937,18 +1095,12 @@
 
       rankChartInstance = new Chart(ctx, {
         type: 'line',
-        data: {
-          labels: labels,
-          datasets: datasets
-        },
+        data: { labels: labels, datasets: datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: {
-              display: true,
-              labels: { color: '#98a2b3' }
-            },
+            legend: { display: true, labels: { color: '#98a2b3' } },
             tooltip: {
               callbacks: {
                 label: (ctx) => {
@@ -968,13 +1120,9 @@
               ticks: { color: '#98a2b3' }
             },
             y: {
-              reverse: true, // 1位を上にするために反転
+              reverse: true,
               grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: {
-                color: '#98a2b3',
-                stepSize: 1,
-                callback: (val) => `#${formatNumber(val)}`
-              }
+              ticks: { color: '#98a2b3', stepSize: 1, callback: (val) => `#${formatNumber(val)}` }
             }
           }
         }
@@ -1009,15 +1157,12 @@
           return { achieved: true, label: formatDate(observed.date), detail: `Observed crossing on ${formatDate(observed.date)}` };
         }
         if (previous && previous.plays < milestone) {
-          return { achieved: true, label: `${formatDate(previous.date)}–${formatDate(observed.date)}`, detail: 'Exact date unknown from daily snapshots' };
+          return { achieved: true, label: `${formatDate(previous.date)}–${formatDate(observed.date)}`, detail: 'Exact date unknown' };
         }
-        return { achieved: true, label: formatDate(observed.date), detail: 'First stored snapshot at or above milestone' };
+        return { achieved: true, label: formatDate(observed.date), detail: 'First stored snapshot' };
       }
 
-      if (achievedNow) {
-        return { achieved: true, label: 'Reached live', detail: 'Live value is at/above this milestone' };
-      }
-
+      if (achievedNow) return { achieved: true, label: 'Reached live', detail: 'Live value is at/above milestone' };
       return { achieved: false, label: 'Not yet', detail: '' };
     }
 
@@ -1032,12 +1177,8 @@
         }
       }
 
-      if (observed) {
-        return { achieved: true, label: formatDate(observed.date), detail: `First recorded on ${formatDate(observed.date)}` };
-      }
-      if (achievedNow) {
-        return { achieved: true, label: 'Reached live', detail: 'Achieved in live play data' };
-      }
+      if (observed) return { achieved: true, label: formatDate(observed.date), detail: `Recorded on ${formatDate(observed.date)}` };
+      if (achievedNow) return { achieved: true, label: 'Reached live', detail: 'Achieved in live play data' };
       return { achieved: false, label: 'Not yet', detail: '' };
     }
 
@@ -1091,10 +1232,10 @@
       const sub = document.createElement('div');
       sub.className = 'congrats-sub';
       if (isLiveAhead) {
-        sub.textContent = `The live Firebase value has reached ${formatNumber(current)} plays. The daily snapshot has not recorded this milestone yet.`;
+        sub.textContent = `The live Firebase value has reached ${formatNumber(current)} plays.`;
       } else {
         const state = getMilestoneState(reached, current, validRows);
-        sub.textContent = state.detail || 'This milestone is recorded in the available history.';
+        sub.textContent = state.detail || 'This milestone is recorded in history.';
       }
       box.appendChild(sub);
       box.classList.remove('hidden');
@@ -1131,10 +1272,11 @@
       wrap.appendChild(img);
     }
 
-    function renderSong(song, songId, sourceUrl, historyRows) {
+    function renderSong(song, songId, historyRows) {
       currentHistoryRows = historyRows;
       const parsed = splitArtistTitle(song.title);
       const moods = normalizeMoods(song.moods);
+      const genres = normalizeGenres(song);
 
       $("title").textContent = parsed.song || song.title || "Untitled";
       $("artist").textContent = parsed.artist || "Unknown artist";
@@ -1143,16 +1285,81 @@
       $("playCount").textContent = formatNumber(song.playCount);
       $("watchTime").textContent = formatSeconds(song.totalWatchTime);
 
-      const playRank = playRankMap[songId];
+      // 各種ランキング情報を反映
+      const rCache = window.computedRanksCache || {};
+      const playRank = rCache.playRanks?.[songId];
+      const timeRank = rCache.timeRanks?.[songId];
+      const weeklyRank = rCache.weeklyRanks?.[songId];
+      const monthlyRank = rCache.monthlyRanks?.[songId];
+      const genRank = rCache.generationRanks?.[songId];
+      const yearRank = rCache.yearRanks?.[songId];
+      const rankDiff = rCache.rankDiffs?.[songId];
+      const genreRanks = rCache.genreRanksAll?.[songId] || {};
+
       $("playRank").textContent = playRank ? `#${formatNumber(playRank.rank)}` : "—";
-      $("playRankCaption").textContent = playRank ? `out of ${formatNumber(playRank.total)} songs` : "Rank unavailable";
+      $("playRankCaption").textContent = playRank ? `out of ${formatNumber(playRank.total)} songs` : "";
 
       const personalOrder = Number(song.order);
       const personalRank = Number.isFinite(personalOrder) ? personalOrder + 1 : null;
       $("personalRank").textContent = personalRank ? `#${formatNumber(personalRank)}` : "—";
-      $("genreTag").textContent = `Genre: ${song.genre ?? "—"}`;
+
+      $("timeRank").textContent = timeRank ? `#${formatNumber(timeRank.rank)}` : "—";
+      $("timeRankCaption").textContent = timeRank ? `out of ${formatNumber(timeRank.total)} songs` : "";
+
+      $("weeklyRank").textContent = weeklyRank ? `#${formatNumber(weeklyRank)}` : "—";
+      $("weeklyRankCaption").textContent = weeklyRank ? "直近1週間の増加順位" : "データなし";
+
+      $("monthlyRank").textContent = monthlyRank ? `#${formatNumber(monthlyRank)}` : "—";
+      $("monthlyRankCaption").textContent = monthlyRank ? "直近1ヶ月の増加順位" : "データなし";
+
+      const genVal = song.generation !== undefined ? song.generation : "未設定";
+      $("generationRank").textContent = genRank ? `#${formatNumber(genRank.rank)}` : "—";
+      $("generationRankCaption").textContent = `第 ${genVal} 世代 (全${genRank?.total || 0}曲中)`;
+
+      if (rankDiff !== undefined) {
+        const sign = rankDiff > 0 ? "+" : "";
+        $("rankDiff").textContent = `${sign}${formatNumber(rankDiff)}`;
+        $("rankDiff").style.color = rankDiff > 0 ? "var(--good)" : rankDiff < 0 ? "var(--danger)" : "var(--text)";
+        $("rankDiffCaption").textContent = rankDiff > 0 ? "順位上昇！" : rankDiff < 0 ? "順位下降" : "変動なし";
+      } else {
+        $("rankDiff").textContent = "—";
+      }
+
+      const songYear = song.year || "不明";
+      $("yearRank").textContent = yearRank ? `#${formatNumber(yearRank.rank)}` : "—";
+      $("yearRankCaption").textContent = `${songYear}年リリース (全${yearRank?.total || 0}曲中)`;
+
+      // ジャンル別順位の表示（複数ジャンル対応）
+      const genreContainer = $("genreRanksContainer");
+      genreContainer.replaceChildren();
+      if (Object.keys(genreRanks).length > 0) {
+        const listDiv = document.createElement("div");
+        listDiv.style.display = "flex";
+        listDiv.style.flexDirection = "column";
+        listDiv.style.gap = "4px";
+        for (const [gName, gInfo] of Object.entries(genreRanks)) {
+          const item = document.createElement("div");
+          item.style.fontSize = "14px";
+          item.innerHTML = `<b>${escapeHtml(gName)}</b>: #${formatNumber(gInfo.rank)} <span style="font-size:11px; color:var(--muted);">(全${gInfo.total}曲)</span>`;
+          listDiv.appendChild(item);
+        }
+        genreContainer.appendChild(listDiv);
+      } else {
+        genreContainer.textContent = "—";
+      }
+
+      // 複数ジャンルタグの表示
+      const genreTagsWrap = $("genreTagsWrap");
+      genreTagsWrap.replaceChildren();
+      genres.forEach(g => {
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = `Genre: ${g}`;
+        genreTagsWrap.appendChild(tag);
+      });
 
       $("year").textContent = song.year ?? "—";
+      $("generation").textContent = song.generation !== undefined ? `第 ${song.generation} 世代` : "—";
       $("addedDate").textContent = getAddedDate(historyRows);
       $("duration").textContent = formatDuration(song.duration);
       $("songId").textContent = song.id ?? songId;
@@ -1176,21 +1383,10 @@
       $("firebaseLink").href = `${FIREBASE_BASE}/music_chart/songs/${encodeURIComponent(songId)}.json`;
       
       renderHistorySummary(historyRows);
-      renderChart(historyRows);
+      renderPlayChart(historyRows);
       renderRankChart(historyRows);
       renderRecentHistory(historyRows);
       renderMilestones(song, historyRows);
-
-      const validRows = historyRows.filter(r => r.plays !== null);
-      if (validRows.length) {
-        const latest = validRows[validRows.length - 1];
-        const current = Number(song.playCount);
-        if (Number.isFinite(current) && latest.plays !== current) {
-          $("historyNote").textContent = `The latest snapshot is ${formatNumber(latest.plays)} plays on ${formatDate(latest.date)}; the live song record is currently ${formatNumber(current)}. History and live data can therefore differ until the next snapshot.`;
-        } else {
-          $("historyNote").textContent = `The graph uses ${validRows.length} stored snapshots from analytics_history & daily_history for this song. Missing dates are left as gaps rather than being treated as zero plays.`;
-        }
-      }
 
       $("loading").classList.add("hidden");
       $("error").classList.add("hidden");
@@ -1202,6 +1398,9 @@
       const params = new URLSearchParams(location.search);
       const songId = forcedSongId || params.get("id") || DEFAULT_SONG_ID;
       try {
+        if (!Object.keys(allSongs).length) {
+          await loadAllData();
+        }
         const [song, analyticsHistory, dailyHistory] = await Promise.all([
           fetchJson(`music_chart/songs/${encodeURIComponent(songId)}`),
           fetchJson("music_chart/analytics_history"),
@@ -1211,13 +1410,12 @@
         if (!song || typeof song !== "object") throw new Error("No song data was returned.");
 
         const historyRows = extractSongCombinedHistory(analyticsHistory, dailyHistory, songId);
-        renderSong(song, songId, `${FIREBASE_BASE}/music_chart/songs/${encodeURIComponent(songId)}.json`, historyRows);
+        renderSong(song, songId, historyRows);
       } catch (error) {
         showError(
           `Firebase RTDBから楽曲データまたは履歴を取得できませんでした。<br>` +
           `<small>${escapeHtml(error.message)}</small><br><br>` +
-          `Song: <code>music_chart/songs/${escapeHtml(songId)}</code><br>` +
-          `History: <code>music_chart/analytics_history</code> + <code>music_chart/daily_history</code>`
+          `Song: <code>music_chart/songs/${escapeHtml(songId)}</code>`
         );
       }
     }
@@ -1247,7 +1445,7 @@
 
     (async () => {
       try {
-        await loadAllSongs();
+        await loadAllData();
       } catch (error) {
         $("searchNote").textContent = "曲検索データを読み込めませんでした。";
       }
