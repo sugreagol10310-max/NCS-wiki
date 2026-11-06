@@ -180,6 +180,24 @@ input[type=range]{width:min(600px,70vw)}
   </div>
 </section>
 
+<!-- Artist別ランキング -->
+<section>
+  <div class="section-title">
+    <h2>🎤 アーティスト別ランキング TOP10</h2>
+    <span class="hint">アーティストごとの総再生回数・総視聴時間および上位3曲</span>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <h3>▶ 再生回数 TOP10</h3>
+      <div id="artistPlaysTop" style="display:flex; flex-direction:column; gap:12px; margin-top:12px;"></div>
+    </div>
+    <div class="card">
+      <h3>⏱ 視聴時間 TOP10</h3>
+      <div id="artistTimeTop" style="display:flex; flex-direction:column; gap:12px; margin-top:12px;"></div>
+    </div>
+  </div>
+</section>
+
 <!-- 直近1週間・1ヶ月の増分 -->
 <section>
   <div class="section-title"><h2>📈 期間別増加量ランキング</h2><span class="hint" id="weekRange">—</span></div>
@@ -299,6 +317,165 @@ function getBaselineIndex(daysAgo){
   return best >= 0 ? best : 0;
 }
 
+/* アーティスト抽出関数（スペースを考慮した記号判定） */
+function extractArtists(song) {
+  let title = song.title || "";
+  let artistsSet = new Set();
+
+  // アーティスト名を区切る正規表現 (カンマ, &, 前後にスペースがある " x ", 前後にスペースがある " - ")
+  const splitRegex = /\s+-\s+|\s+x\s+|,|&/i;
+
+  // 1. 括弧内の Remix 情報からアーティスト抽出 (例: "(Krys Talk Remix)")
+  const bracketRegex = /\(([^)]+)\)|\[([^\]]+)\]/g;
+  let match;
+  while ((match = bracketRegex.exec(title)) !== null) {
+    let content = match[1] || match[2] || "";
+    if (/remix/i.test(content)) {
+      let remixer = content.replace(/remix/gi, "").trim();
+      if (remixer) {
+        let subParts = remixer.split(splitRegex);
+        subParts.forEach(p => {
+          let cleaned = p.trim();
+          if (cleaned) artistsSet.add(cleaned);
+        });
+      }
+    }
+  }
+
+  // 2. メインのアーティスト部分を抽出 (最初の " - " より前)
+  let titleWithoutBrackets = title.replace(/\([^)]*\)|\[[^\]]*\]/g, "").trim();
+  let hyphenIndex = titleWithoutBrackets.indexOf(" - ");
+  let mainPart = hyphenIndex !== -1 ? titleWithoutBrackets.substring(0, hyphenIndex) : titleWithoutBrackets;
+
+  // スペースを考慮した区切り文字で分割
+  if (mainPart) {
+    let parts = mainPart.split(splitRegex);
+    parts.forEach(p => {
+      let cleaned = p.trim();
+      if (cleaned && !/remix/i.test(cleaned)) {
+        artistsSet.add(cleaned);
+      }
+    });
+  }
+
+  return Array.from(artistsSet);
+}
+
+/* アーティスト別ランキング計算関数 */
+function getArtistRankings() {
+  const list = getSongList();
+  const artistMap = {};
+
+  list.forEach(song => {
+    const artists = extractArtists(song);
+    const plays = Number(song.playCount || 0);
+    const time = Number(song.totalWatchTime || 0);
+
+    artists.forEach(artist => {
+      if (!artistMap[artist]) {
+        artistMap[artist] = {
+          name: artist,
+          totalPlays: 0,
+          totalTime: 0,
+          songs: []
+        };
+      }
+      artistMap[artist].totalPlays += plays;
+      artistMap[artist].totalTime += time;
+      artistMap[artist].songs.push({ song, plays, time });
+    });
+  });
+
+  const artistsArray = Object.values(artistMap);
+
+  artistsArray.forEach(artistData => {
+    artistData.songsPlaysSorted = [...artistData.songs].sort((a,b) => b.plays - a.plays);
+    artistData.songsTimeSorted = [...artistData.songs].sort((a,b) => b.time - a.time);
+  });
+
+  const topPlaysArtists = [...artistsArray].sort((a,b) => b.totalPlays - a.totalPlays).slice(0, 10);
+  const topTimeArtists = [...artistsArray].sort((a,b) => b.totalTime - a.totalTime).slice(0, 10);
+
+  return { topPlaysArtists, topTimeArtists };
+}
+
+/* Artist別ランキング描画関数 */
+function renderArtistRankings() {
+  const { topPlaysArtists, topTimeArtists } = getArtistRankings();
+
+  // 再生回数 TOP10
+  const playsContainer = $("artistPlaysTop");
+  if (!topPlaysArtists.length) {
+    playsContainer.innerHTML = '<div class="empty">データがありません。</div>';
+  } else {
+    playsContainer.innerHTML = topPlaysArtists.map((artist, idx) => {
+      const topSong = artist.songsPlaysSorted[0]?.song;
+      const thumb = getThumbnail(topSong);
+      const top3 = artist.songsPlaysSorted.slice(0, 3);
+
+      const top3Html = top3.map((item, i) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding:2px 0;">
+          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">#${i+1} <a class="song-link" href="./index.html?id=${encodeURIComponent(item.song.id)}">${esc(item.song.title)}</a></span>
+          <span style="font-variant-numeric:tabular-nums; color:var(--good);">${num(item.plays)}回</span>
+        </div>
+      `).join("");
+
+      return `
+        <div style="background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:12px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-weight:800; font-size:16px; width:28px; color:var(--muted);">#${idx+1}</span>
+            <img src="${thumb}" style="width:64px; height:36px; object-fit:cover; border-radius:4px; background:#1a202c; flex-shrink:0;" alt="thumb">
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(artist.name)}</div>
+              <div style="font-size:12px; color:var(--muted);">総再生回数: <b style="color:var(--text);">${num(artist.totalPlays)}回</b> (${artist.songs.length}曲)</div>
+            </div>
+          </div>
+          <div style="margin-top:8px; border-top:1px solid var(--line); padding-top:6px;">
+            <div style="font-size:11px; color:var(--muted); margin-bottom:2px; font-weight:600;">TOP3 楽曲:</div>
+            ${top3Html}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // 視聴時間 TOP10
+  const timeContainer = $("artistTimeTop");
+  if (!topTimeArtists.length) {
+    timeContainer.innerHTML = '<div class="empty">データがありません。</div>';
+  } else {
+    timeContainer.innerHTML = topTimeArtists.map((artist, idx) => {
+      const topSong = artist.songsTimeSorted[0]?.song;
+      const thumb = getThumbnail(topSong);
+      const top3 = artist.songsTimeSorted.slice(0, 3);
+
+      const top3Html = top3.map((item, i) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding:2px 0;">
+          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">#${i+1} <a class="song-link" href="./index.html?id=${encodeURIComponent(item.song.id)}">${esc(item.song.title)}</a></span>
+          <span style="font-variant-numeric:tabular-nums; color:var(--good);">${formatTime(item.time)}</span>
+        </div>
+      `).join("");
+
+      return `
+        <div style="background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:12px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-weight:800; font-size:16px; width:28px; color:var(--muted);">#${idx+1}</span>
+            <img src="${thumb}" style="width:64px; height:36px; object-fit:cover; border-radius:4px; background:#1a202c; flex-shrink:0;" alt="thumb">
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(artist.name)}</div>
+              <div style="font-size:12px; color:var(--muted);">総視聴時間: <b style="color:var(--text);">${formatTime(artist.totalTime)}</b> (${artist.songs.length}曲)</div>
+            </div>
+          </div>
+          <div style="margin-top:8px; border-top:1px solid var(--line); padding-top:6px;">
+            <div style="font-size:11px; color:var(--muted); margin-bottom:2px; font-weight:600;">TOP3 楽曲:</div>
+            ${top3Html}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+}
+
 /* 1. 概要表示 & TOP50 / TOP20 */
 function renderOverview(){
   const list=getSongList();
@@ -310,7 +487,6 @@ function renderOverview(){
   $("totalTime").textContent=formatTime(totalTimeVal);
   $("dayCount").textContent=num(dates.length);
 
-  // 直近1週間・1ヶ月の全体の増加量を計算して上部カードに反映
   if(dates.length >= 2) {
     const latestDate = dates[dates.length - 1];
     const wIndex = getBaselineIndex(7);
@@ -342,7 +518,6 @@ function renderOverview(){
     $("totalTimeGain").textContent = "増加量データなし";
   }
 
-  // 直近1週間の増加量ランキング（再生回数）を計算し、順位 m を割り出す
   let weeklyPlaysRankMap = {};
   if(dates.length >= 2) {
     const latestDate = dates[dates.length - 1];
@@ -365,7 +540,6 @@ function renderOverview(){
     });
   }
 
-  // 視聴回数 TOP50
   const playsSorted=[...list].sort((a,b)=>Number(b.playCount||0)-Number(a.playCount||0) || Number(a.order||0)-Number(b.order||0));
   const playRanks=competitionRanks(playsSorted, s=>Number(s.playCount||0));
   const top50=playsSorted.slice(0,50);
@@ -383,7 +557,6 @@ function renderOverview(){
     }
 
     if (i < 10) {
-      // TOP10: 強調・サムネイル画像付き
       const thumb = getThumbnail(s);
       return `
         <tr class="top10-row">
@@ -402,7 +575,6 @@ function renderOverview(){
         </tr>
       `;
     } else {
-      // 11位以降: 簡易表示
       return `
         <tr>
           <td class="rank">#${n}</td>
@@ -423,7 +595,6 @@ function renderOverview(){
     });
   };
 
-  // 視聴時間 TOP20（TOP10は視聴回数同様に強調・サムネイル表示）
   const timeSorted=[...list].sort((a,b)=>Number(b.totalWatchTime||0)-Number(a.totalWatchTime||0));
   const timeRanks=competitionRanks(timeSorted, s=>Number(s.totalWatchTime||0));
   const top20Time=timeSorted.slice(0,20);
@@ -535,7 +706,7 @@ function renderWeeklyAndMonthly(){
   $("monthlyTime").innerHTML=table(mTime);
 }
 
-/* 4. ジャンル別 TOP3 ランキング（指定の見出しに変更） */
+/* 4. ジャンル別 TOP3 ランキング */
 function renderGenreTop3() {
   const list = getSongList();
 
@@ -676,7 +847,7 @@ function buildHistory(raw){
   return out;
 }
 
-/* 5. 歴代「好き度 #1」の変遷（サムネイル付き） */
+/* 5. 歴代「好き度 #1」の変遷 */
 function renderChampions(){
   const observations=[];
   for(const date of mergedDates){
@@ -706,7 +877,7 @@ function renderChampions(){
   }).join(""):`<div class="empty">order=0 の履歴がまだありません。</div>`;
 }
 
-/* 6. 追加日リストの処理（一本化） */
+/* 6. 追加日リストの処理 */
 function renderAddedDates() {
   const list = getSongList();
   
@@ -921,6 +1092,7 @@ async function load(){
     renderGenerationTop();
     renderWeeklyAndMonthly();
     renderGenreTop3();
+    renderArtistRankings();
     renderChampions(); 
     renderAddedDates();
     setupRace();
