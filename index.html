@@ -1555,3 +1555,574 @@
         grid.appendChild(card);
       });
       listView.appendChild(grid);
+    }
+
+    function renderArtistDetail(art) {
+      const listView = $("listViewContainer");
+      listView.replaceChildren();
+
+      // 再生回数・視聴時間ランキング、1週間・1ヶ月トレンドの算出
+      const sortedByPlays = [...art.songs].sort((a, b) => Number(b.playCount || 0) - Number(a.playCount || 0));
+      const sortedByTime = [...art.songs].sort((a, b) => Number(b.totalWatchTime || 0) - Number(a.totalWatchTime || 0));
+
+      // 1週間・1ヶ月トレンド（dailyHistoryベース）
+      const dates = Object.keys(allHistoryDaily || {}).sort();
+      let weeklySorted = [...art.songs];
+      let monthlySorted = [...art.songs];
+      if (dates.length >= 2) {
+        const latestDate = dates[dates.length - 1];
+        const latestObj = allHistoryDaily[latestDate]?.songs || {};
+        const getBaselineDate = (daysAgo) => {
+          const latestD = new Date(latestDate + "T00:00:00Z");
+          const targetD = new Date(latestD.getTime() - daysAgo * 86400000);
+          let best = dates[0];
+          for (const d of dates) {
+            if (d <= targetD.toISOString().split("T")[0]) best = d;
+          }
+          return best;
+        };
+        const wObj = allHistoryDaily[getBaselineDate(7)]?.songs || {};
+        const mObj = allHistoryDaily[getBaselineDate(30)]?.songs || {};
+
+        weeklySorted.sort((a, b) => {
+          const da = (latestObj[a.id]?.playCount ?? a.playCount) - (wObj[a.id]?.playCount ?? 0);
+          const db = (latestObj[b.id]?.playCount ?? b.playCount) - (wObj[b.id]?.playCount ?? 0);
+          return db - da;
+        });
+        monthlySorted.sort((a, b) => {
+          const da = (latestObj[a.id]?.playCount ?? a.playCount) - (mObj[a.id]?.playCount ?? 0);
+          const db = (latestObj[b.id]?.playCount ?? b.playCount) - (mObj[b.id]?.playCount ?? 0);
+          return db - da;
+        });
+      }
+
+      // アーティスト全体の視聴回数グラフ（一部の曲のデータが欠けている場合はa月b日以前の一番新しい視聴回数のデータをその時の視聴回数とみなす補完）
+      const allDatesMap = new Map();
+      const allSongIds = art.songs.map(s => s.id);
+
+      // dailyHistoryとanalyticsHistoryから全日付を収集
+      const dateSet = new Set();
+      [allHistoryDaily, allHistoryAnalytics].forEach(histObj => {
+        if (histObj && typeof histObj === "object") {
+          Object.keys(histObj).forEach(d => dateSet.add(d));
+        }
+      });
+      const sortedDates = Array.from(dateSet).sort();
+
+      const artistHistoryRows = [];
+      const latestSongPlays = {};
+
+      sortedDates.forEach(dateStr => {
+        let dayTotalPlays = 0;
+        allSongIds.forEach(sId => {
+          const dailyVal = allHistoryDaily[dateStr]?.songs?.[sId]?.playCount;
+          const analyticsVal = allHistoryAnalytics[dateStr]?.songs?.[sId]?.playCount;
+          const val = dailyVal ?? analyticsVal;
+          if (val !== undefined && val !== null) {
+            latestSongPlays[sId] = Number(val);
+          }
+          if (latestSongPlays[sId] !== undefined) {
+            dayTotalPlays += latestSongPlays[sId];
+          }
+        });
+        if (Object.keys(latestSongPlays).length > 0) {
+          artistHistoryRows.push({ date: dateStr, plays: dayTotalPlays });
+        }
+      });
+
+      const backBtn = document.createElement("button");
+      backBtn.className = "btn";
+      backBtn.style.marginBottom = "16px";
+      backBtn.textContent = "← アーティスト一覧に戻る";
+      backBtn.addEventListener("click", () => renderArtistsIndex());
+      listView.appendChild(backBtn);
+
+      const hero = document.createElement("div");
+      hero.className = "hero";
+      const ytId = art.mostPopularSong?.youtubeId;
+      const thumbUrl = ytId ? `https://img.youtube.com/vi/${encodeURIComponent(ytId)}/maxresdefault.jpg` : "";
+
+      hero.innerHTML = `
+        <div class="hero-main">
+          <div class="thumb-wrap">
+            <img class="thumb" src="${thumbUrl}" alt="" />
+          </div>
+          <div class="hero-copy">
+            <div class="eyebrow">Artist Profile</div>
+            <h1>${escapeHtml(art.name)}</h1>
+            <div class="subtitle">登録曲数: ${formatNumber(art.songCount)}曲 / 総再生回数: ${formatNumber(art.totalPlays)}回</div>
+          </div>
+        </div>
+        <div class="hero-grid">
+          <div class="stat"><div class="label">Total Plays</div><div class="value">${formatNumber(art.totalPlays)}</div></div>
+          <div class="stat"><div class="label">Total Listening Time</div><div class="value">${formatSeconds(art.totalWatchTime)}</div></div>
+        </div>
+      `;
+      listView.appendChild(hero);
+
+      // アナリティクス・グラフ表示セクション
+      const chartSec = document.createElement("div");
+      chartSec.className = "section-card";
+      chartSec.style.marginTop = "22px";
+      chartSec.innerHTML = `
+        <h2>アーティスト視聴回数推移</h2>
+        <div class="chart-box" style="margin-top:14px;">
+          <canvas id="artistChartCanvas"></canvas>
+        </div>
+      `;
+      listView.appendChild(chartSec);
+
+      setTimeout(() => {
+        const ctx = $("artistChartCanvas")?.getContext("2d");
+        if (ctx && artistHistoryRows.length > 0) {
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: artistHistoryRows.map(r => formatDate(r.date)),
+              datasets: [{
+                label: `${art.name} 視聴回数合計`,
+                data: artistHistoryRows.map(r => r.plays),
+                borderColor: '#7dd3fc',
+                backgroundColor: 'rgba(125, 211, 252, 0.1)',
+                fill: true,
+                tension: 0.1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: { ticks: { color: '#98a2b3' }, grid: { color: 'rgba(255,255,255,.05)' } },
+                y: { ticks: { color: '#98a2b3' }, grid: { color: 'rgba(255,255,255,.05)' } }
+              }
+            }
+          });
+        }
+      }, 50);
+
+      // ランキング＆曲一覧
+      const listSec = document.createElement("div");
+      listSec.className = "section-card";
+      listSec.style.marginTop = "22px";
+      listSec.innerHTML = `
+        <h2>アーティストの楽曲一覧 & ランキング</h2>
+        <div class="ranking-note" style="margin-bottom:14px;">再生回数順に並んでいます。</div>
+        <div class="search-results" style="max-height:none;" id="artistSongsList"></div>
+      `;
+      listView.appendChild(listSec);
+
+      const songListContainer = $("artistSongsList");
+      sortedByPlays.forEach((s, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "search-result";
+        const yId = s.youtubeId;
+        btn.innerHTML = `
+          <img class="search-result-thumb" src="${yId ? `https://img.youtube.com/vi/${yId}/mqdefault.jpg` : ""}" alt="" />
+          <div class="search-result-main">
+            <div class="search-result-title">#${idx+1} ${escapeHtml(s.title)}</div>
+            <div class="search-result-sub">再生: ${formatNumber(s.playCount)}回 / 時間: ${formatSeconds(s.totalWatchTime)}</div>
+          </div>
+          <div class="search-result-rank">詳細を見る →</div>
+        `;
+        btn.addEventListener("click", () => {
+          const url = new URL(location.href);
+          url.searchParams.set("id", s.id);
+          history.pushState({}, "", url);
+          switchView("song");
+          loadSong(s.id);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+        songListContainer.appendChild(btn);
+      });
+    }
+
+    // 2. ジャンルのページの実装
+    function renderGenresIndex() {
+      const listView = $("listViewContainer");
+      listView.replaceChildren();
+
+      const genreMap = {};
+      for (const [sId, song] of Object.entries(allSongs)) {
+        const genres = normalizeGenres(song);
+        genres.forEach(g => {
+          if (!genreMap[g]) genreMap[g] = [];
+          genreMap[g].push({ id: sId, ...song });
+        });
+      }
+
+      const genreSummary = Object.entries(genreMap).map(([name, songs]) => {
+        let totalPlays = 0;
+        let mostPopularSong = songs[0];
+        let maxPlays = -1;
+        songs.forEach(s => {
+          const plays = Number(s.playCount || 0);
+          totalPlays += plays;
+          if (plays > maxPlays) {
+            maxPlays = plays;
+            mostPopularSong = s;
+          }
+        });
+        return { name, songCount: songs.length, totalPlays, mostPopularSong, songs };
+      }).sort((a, b) => b.totalPlays - a.totalPlays);
+
+      const header = document.createElement("div");
+      header.className = "section-header-flex";
+      header.innerHTML = `<h2>ジャンル一覧 (全 ${genreSummary.length} ジャンル)</h2>`;
+      listView.appendChild(header);
+
+      const grid = document.createElement("div");
+      grid.className = "grid-cards";
+
+      genreSummary.forEach(g => {
+        const card = document.createElement("div");
+        card.className = "card-item";
+        const ytId = g.mostPopularSong?.youtubeId;
+        const thumbUrl = ytId ? `https://img.youtube.com/vi/${encodeURIComponent(ytId)}/mqdefault.jpg` : "";
+
+        card.innerHTML = `
+          <img class="card-thumb" src="${thumbUrl}" alt="" loading="lazy" />
+          <div class="card-title">${escapeHtml(g.name)}</div>
+          <div class="card-sub">登録曲数: ${formatNumber(g.songCount)}曲 / 総再生: ${formatNumber(g.totalPlays)}回</div>
+        `;
+        card.addEventListener("click", () => renderGenreDetail(g));
+        grid.appendChild(card);
+      });
+      listView.appendChild(grid);
+    }
+
+    function renderGenreDetail(genreObj) {
+      const listView = $("listViewContainer");
+      listView.replaceChildren();
+
+      const backBtn = document.createElement("button");
+      backBtn.className = "btn";
+      backBtn.style.marginBottom = "16px";
+      backBtn.textContent = "← ジャンル一覧に戻る";
+      backBtn.addEventListener("click", () => renderGenresIndex());
+      listView.appendChild(backBtn);
+
+      let totalPlays = genreObj.totalPlays;
+      const ytId = genreObj.mostPopularSong?.youtubeId;
+      const thumbUrl = ytId ? `https://img.youtube.com/vi/${encodeURIComponent(ytId)}/maxresdefault.jpg` : "";
+
+      const hero = document.createElement("div");
+      hero.className = "hero";
+      hero.innerHTML = `
+        <div class="hero-main">
+          <div class="thumb-wrap"><img class="thumb" src="${thumbUrl}" alt="" /></div>
+          <div class="hero-copy">
+            <div class="eyebrow">Genre Page</div>
+            <h1>${escapeHtml(genreObj.name)}</h1>
+            <div class="subtitle">登録曲数: ${formatNumber(genreObj.songCount)}曲 / 全体の視聴回数: ${formatNumber(totalPlays)}回</div>
+          </div>
+        </div>
+      `;
+      listView.appendChild(hero);
+
+      const contentSec = document.createElement("div");
+      contentSec.className = "section-card";
+      contentSec.style.marginTop = "22px";
+      contentSec.innerHTML = `
+        <div class="sort-bar">
+          <h2>${escapeHtml(genreObj.name)}の曲一覧</h2>
+          <div>
+            <label class="label" style="margin-right:6px;">並び替え:</label>
+            <select id="genreSortSelect" class="sort-select">
+              <option value="play">視聴回数ランキング</option>
+              <option value="time">視聴時間ランキング</option>
+              <option value="weekly">直近1週間ランキング</option>
+              <option value="monthly">直近1ヶ月ランキング</option>
+            </select>
+          </div>
+        </div>
+        <div class="search-results" style="max-height:none;" id="genreSongsList"></div>
+      `;
+      listView.appendChild(contentSec);
+
+      const dates = Object.keys(allHistoryDaily || {}).sort();
+      const latestObj = dates.length ? (allHistoryDaily[dates[dates.length - 1]]?.songs || {}) : {};
+      const getBaselineDate = (daysAgo) => {
+        if (!dates.length) return null;
+        const latestD = new Date(dates[dates.length - 1] + "T00:00:00Z");
+        const targetD = new Date(latestD.getTime() - daysAgo * 86400000);
+        let best = dates[0];
+        for (const d of dates) {
+          if (d <= targetD.toISOString().split("T")[0]) best = d;
+        }
+        return best;
+      };
+      const wObj = dates.length ? (allHistoryDaily[getBaselineDate(7)]?.songs || {}) : {};
+      const mObj = dates.length ? (allHistoryDaily[getBaselineDate(30)]?.songs || {}) : {};
+
+      const renderSortedGenreSongs = (mode) => {
+        const listContainer = $("genreSongsList");
+        listContainer.replaceChildren();
+
+        const songsCopy = [...genreObj.songs];
+        if (mode === "play") {
+          songsCopy.sort((a, b) => Number(b.playCount || 0) - Number(a.playCount || 0));
+        } else if (mode === "time") {
+          songsCopy.sort((a, b) => Number(b.totalWatchTime || 0) - Number(a.totalWatchTime || 0));
+        } else if (mode === "weekly") {
+          songsCopy.sort((a, b) => {
+            const da = (latestObj[a.id]?.playCount ?? a.playCount) - (wObj[a.id]?.playCount ?? 0);
+            const db = (latestObj[b.id]?.playCount ?? b.playCount) - (wObj[b.id]?.playCount ?? 0);
+            return db - da;
+          });
+        } else if (mode === "monthly") {
+          songsCopy.sort((a, b) => {
+            const da = (latestObj[a.id]?.playCount ?? a.playCount) - (mObj[a.id]?.playCount ?? 0);
+            const db = (latestObj[b.id]?.playCount ?? b.playCount) - (mObj[b.id]?.playCount ?? 0);
+            return db - da;
+          });
+        }
+
+        songsCopy.forEach((s, idx) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "search-result";
+          const yId = s.youtubeId;
+          btn.innerHTML = `
+            <img class="search-result-thumb" src="${yId ? `https://img.youtube.com/vi/${yId}/mqdefault.jpg` : ""}" alt="" />
+            <div class="search-result-main">
+              <div class="search-result-title">#${idx+1} ${escapeHtml(s.title)}</div>
+              <div class="search-result-sub">再生: ${formatNumber(s.playCount)}回 / 時間: ${formatSeconds(s.totalWatchTime)}</div>
+            </div>
+            <div class="search-result-rank">詳細を見る →</div>
+          `;
+          btn.addEventListener("click", () => {
+            const url = new URL(location.href);
+            url.searchParams.set("id", s.id);
+            history.pushState({}, "", url);
+            switchView("song");
+            loadSong(s.id);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          });
+          listContainer.appendChild(btn);
+        });
+      };
+
+      renderSortedGenreSongs("play");
+      $("genreSortSelect").addEventListener("change", (e) => {
+        renderSortedGenreSongs(e.target.value);
+      });
+    }
+
+    // 3. リリース年ページの実装
+    function renderYearsIndex() {
+      const listView = $("listViewContainer");
+      listView.replaceChildren();
+
+      const yearMap = {};
+      for (const [sId, song] of Object.entries(allSongs)) {
+        const y = song.year ? String(song.year) : "不明";
+        if (!yearMap[y]) yearMap[y] = [];
+        yearMap[y].push({ id: sId, ...song });
+      }
+
+      const yearSummary = Object.entries(yearMap).map(([name, songs]) => {
+        let totalPlays = 0;
+        let mostPopularSong = songs[0];
+        let maxPlays = -1;
+        songs.forEach(s => {
+          const plays = Number(s.playCount || 0);
+          totalPlays += plays;
+          if (plays > maxPlays) {
+            maxPlays = plays;
+            mostPopularSong = s;
+          }
+        });
+        return { name, songCount: songs.length, totalPlays, mostPopularSong, songs };
+      }).sort((a, b) => b.name.localeCompare(a.name));
+
+      const header = document.createElement("div");
+      header.className = "section-header-flex";
+      header.innerHTML = `<h2>リリース年一覧 (全 ${yearSummary.length} 年)</h2>`;
+      listView.appendChild(header);
+
+      const grid = document.createElement("div");
+      grid.className = "grid-cards";
+
+      yearSummary.forEach(yObj => {
+        const card = document.createElement("div");
+        card.className = "card-item";
+        const ytId = yObj.mostPopularSong?.youtubeId;
+        const thumbUrl = ytId ? `https://img.youtube.com/vi/${encodeURIComponent(ytId)}/mqdefault.jpg` : "";
+
+        card.innerHTML = `
+          <img class="card-thumb" src="${thumbUrl}" alt="" loading="lazy" />
+          <div class="card-title">${escapeHtml(yObj.name)}年</div>
+          <div class="card-sub">登録曲数: ${formatNumber(yObj.songCount)}曲 / 総再生: ${formatNumber(yObj.totalPlays)}回</div>
+        `;
+        card.addEventListener("click", () => renderYearDetail(yObj));
+        grid.appendChild(card);
+      });
+      listView.appendChild(grid);
+    }
+
+    function renderYearDetail(yearObj) {
+      const listView = $("listViewContainer");
+      listView.replaceChildren();
+
+      const backBtn = document.createElement("button");
+      backBtn.className = "btn";
+      backBtn.style.marginBottom = "16px";
+      backBtn.textContent = "← リリース年一覧に戻る";
+      backBtn.addEventListener("click", () => renderYearsIndex());
+      listView.appendChild(backBtn);
+
+      let totalPlays = yearObj.totalPlays;
+      const ytId = yearObj.mostPopularSong?.youtubeId;
+      const thumbUrl = ytId ? `https://img.youtube.com/vi/${encodeURIComponent(ytId)}/maxresdefault.jpg` : "";
+
+      const hero = document.createElement("div");
+      hero.className = "hero";
+      hero.innerHTML = `
+        <div class="hero-main">
+          <div class="thumb-wrap"><img class="thumb" src="${thumbUrl}" alt="" /></div>
+          <div class="hero-copy">
+            <div class="eyebrow">Release Year Page</div>
+            <h1>${escapeHtml(yearObj.name)}年</h1>
+            <div class="subtitle">登録曲数: ${formatNumber(yearObj.songCount)}曲 / 全体の視聴回数: ${formatNumber(totalPlays)}回</div>
+          </div>
+        </div>
+      `;
+      listView.appendChild(hero);
+
+      const contentSec = document.createElement("div");
+      contentSec.className = "section-card";
+      contentSec.style.marginTop = "22px";
+      contentSec.innerHTML = `
+        <div class="sort-bar">
+          <h2>${escapeHtml(yearObj.name)}年リリースの曲一覧</h2>
+          <div>
+            <label class="label" style="margin-right:6px;">並び替え:</label>
+            <select id="yearSortSelect" class="sort-select">
+              <option value="play">視聴回数ランキング</option>
+              <option value="time">視聴時間ランキング</option>
+              <option value="weekly">直近1週間ランキング</option>
+              <option value="monthly">直近1ヶ月ランキング</option>
+            </select>
+          </div>
+        </div>
+        <div class="search-results" style="max-height:none;" id="yearSongsList"></div>
+      `;
+      listView.appendChild(contentSec);
+
+      const dates = Object.keys(allHistoryDaily || {}).sort();
+      const latestObj = dates.length ? (allHistoryDaily[dates[dates.length - 1]]?.songs || {}) : {};
+      const getBaselineDate = (daysAgo) => {
+        if (!dates.length) return null;
+        const latestD = new Date(dates[dates.length - 1] + "T00:00:00Z");
+        const targetD = new Date(latestD.getTime() - daysAgo * 86400000);
+        let best = dates[0];
+        for (const d of dates) {
+          if (d <= targetD.toISOString().split("T")[0]) best = d;
+        }
+        return best;
+      };
+      const wObj = dates.length ? (allHistoryDaily[getBaselineDate(7)]?.songs || {}) : {};
+      const mObj = dates.length ? (allHistoryDaily[getBaselineDate(30)]?.songs || {}) : {};
+
+      const renderSortedYearSongs = (mode) => {
+        const listContainer = $("yearSongsList");
+        listContainer.replaceChildren();
+
+        const songsCopy = [...yearObj.songs];
+        if (mode === "play") {
+          songsCopy.sort((a, b) => Number(b.playCount || 0) - Number(a.playCount || 0));
+        } else if (mode === "time") {
+          songsCopy.sort((a, b) => Number(b.totalWatchTime || 0) - Number(a.totalWatchTime || 0));
+        } else if (mode === "weekly") {
+          songsCopy.sort((a, b) => {
+            const da = (latestObj[a.id]?.playCount ?? a.playCount) - (wObj[a.id]?.playCount ?? 0);
+            const db = (latestObj[b.id]?.playCount ?? b.playCount) - (wObj[b.id]?.playCount ?? 0);
+            return db - da;
+          });
+        } else if (mode === "monthly") {
+          songsCopy.sort((a, b) => {
+            const da = (latestObj[a.id]?.playCount ?? a.playCount) - (mObj[a.id]?.playCount ?? 0);
+            const db = (latestObj[b.id]?.playCount ?? b.playCount) - (mObj[b.id]?.playCount ?? 0);
+            return db - da;
+          });
+        }
+
+        songsCopy.forEach((s, idx) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "search-result";
+          const yId = s.youtubeId;
+          btn.innerHTML = `
+            <img class="search-result-thumb" src="${yId ? `https://img.youtube.com/vi/${yId}/mqdefault.jpg` : ""}" alt="" />
+            <div class="search-result-main">
+              <div class="search-result-title">#${idx+1} ${escapeHtml(s.title)}</div>
+              <div class="search-result-sub">再生: ${formatNumber(s.playCount)}回 / 時間: ${formatSeconds(s.totalWatchTime)}</div>
+            </div>
+            <div class="search-result-rank">詳細を見る →</div>
+          `;
+          btn.addEventListener("click", () => {
+            const url = new URL(location.href);
+            url.searchParams.set("id", s.id);
+            history.pushState({}, "", url);
+            switchView("song");
+            loadSong(s.id);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          });
+          listContainer.appendChild(btn);
+        });
+      };
+
+      renderSortedYearSongs("play");
+      $("yearSortSelect").addEventListener("change", (e) => {
+        renderSortedYearSongs(e.target.value);
+      });
+    }
+
+    // イベントリスナー設定
+    document.querySelectorAll(".nav-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        const view = tab.dataset.view;
+        switchView(view);
+      });
+    });
+
+    $("goToHome").addEventListener("click", () => {
+      switchView("song");
+      loadSong(DEFAULT_SONG_ID);
+    });
+
+    $("songSearch").addEventListener("input", (event) => renderSearchResults(event.target.value));
+    $("clearSearch").addEventListener("click", () => {
+      $("songSearch").value = "";
+      renderSearchResults("");
+      $("songSearch").focus();
+    });
+
+    $("toggleMaBtn").addEventListener("click", () => {
+      showMovingAverage = !showMovingAverage;
+      $("toggleMaBtn").textContent = `移動平均線: ${showMovingAverage ? "ON" : "OFF"}`;
+      renderRankChart(currentHistoryRows);
+    });
+
+    $("resetPlayZoomBtn").addEventListener("click", () => {
+      if (playChartInstance) playChartInstance.resetZoom();
+    });
+
+    $("resetRankZoomBtn").addEventListener("click", () => {
+      if (rankChartInstance) rankChartInstance.resetZoom();
+    });
+
+    window.addEventListener("popstate", () => loadSong());
+
+    (async () => {
+      try {
+        await loadAllData();
+      } catch (error) {
+        $("searchNote").textContent = "曲検索データを読み込めませんでした。";
+      }
+      await loadSong();
+    })();
+  </script>
+</body>
+</html>
