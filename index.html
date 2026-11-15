@@ -38,12 +38,18 @@
         var(--bg);
     }
 
-    a { color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { text-decoration: underline; }
     .wrap { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 60px; }
 
     .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
-    .brand { font-weight: 800; letter-spacing: .02em; }
+    .brand { font-weight: 800; letter-spacing: .02em; cursor: pointer; }
     .status { font-size: 12px; color: var(--muted); }
+
+    /* 追加：ナビゲーションタブ */
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .nav-tab { padding: 8px 14px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 13px; font-weight: 700; cursor: pointer; color: var(--muted); }
+    .nav-tab.active { background: var(--accent); color: #081018; border-color: transparent; }
 
     .hero {
       background: linear-gradient(145deg, rgba(18, 23, 33, .97), rgba(24, 30, 41, .93));
@@ -257,6 +263,19 @@
     .rank-card .rank-caption { margin-top: 6px; font-size: 11px; color: var(--muted); }
     .rank-card .rank-icon { position: absolute; right: 14px; top: 10px; font-size: 20px; opacity: .72; }
 
+    /* 一覧・カードグリッド共通スタイル */
+    .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 16px; }
+    .card-item {
+      background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.06); border-radius: 16px; padding: 16px; cursor: pointer; transition: 0.2s;
+    }
+    .card-item:hover { border-color: rgba(125,211,252,.3); background: rgba(125,211,252,.04); }
+    .card-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 10px; background: #0f141c; margin-bottom: 12px; }
+    .card-title { font-weight: 750; font-size: 16px; margin-bottom: 4px; }
+    .card-sub { font-size: 12px; color: var(--muted); }
+
+    .sort-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+    .sort-select { padding: 8px 12px; border-radius: 10px; background: #0f141c; border: 1px solid var(--line); color: var(--text); font: inherit; }
+
     @media (max-width: 900px) {
       .ranking-highlight { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
@@ -279,11 +298,20 @@
 <body>
   <main class="wrap">
     <div class="topbar">
-      <div class="brand">NCS WIKI</div>
+      <div class="brand" id="goToHome">NCS WIKI</div>
       <div class="status" id="status">Loading from Firebase…</div>
     </div>
 
-    <section class="search-panel">
+    <!-- 追加：ページ切り替えタブ -->
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-view="song" id="tabSong">曲詳細</button>
+      <button class="nav-tab" data-view="artists" id="tabArtists">アーティスト一覧</button>
+      <button class="nav-tab" data-view="genres" id="tabGenres">ジャンル一覧</button>
+      <button class="nav-tab" data-view="years" id="tabYears">リリース年一覧</button>
+    </div>
+
+    <!-- 検索パネル -->
+    <section class="search-panel" id="searchPanelContainer">
       <div class="eyebrow">Find a song</div>
       <div class="search-row">
         <input id="songSearch" class="search-input" type="search" placeholder="曲名・アーティストで検索…" autocomplete="off" />
@@ -296,6 +324,10 @@
     <div id="loading" class="section-card loading">Loading song data…</div>
     <div id="error" class="section-card error hidden"></div>
 
+    <!-- リストビュー等のコンテナ (アーティスト、ジャンル、リリース年用) -->
+    <div id="listViewContainer" class="section-card hidden"></div>
+
+    <!-- 曲詳細ビューのコンテナ -->
     <div id="content" class="hidden">
       <section class="hero">
         <div class="hero-main">
@@ -303,7 +335,7 @@
             <div class="thumb-fallback">YouTube thumbnail</div>
           </div>
           <div class="hero-copy">
-            <div class="eyebrow">Song Wiki</div>
+            <div class="eyebrow" id="heroEyebrow">Song Wiki</div>
             <h1 id="title">—</h1>
             <div class="subtitle" id="artist">—</div>
           </div>
@@ -313,11 +345,11 @@
 
         <div class="hero-grid">
           <div class="stat">
-            <div class="label">Plays</div>
+            <div class="label" id="statPlayLabel">Plays</div>
             <div class="value" id="playCount">—</div>
           </div>
           <div class="stat">
-            <div class="label">Total Listening Time</div>
+            <div class="label" id="statTimeLabel">Total Listening Time</div>
             <div class="value" id="watchTime">—</div>
           </div>
         </div>
@@ -330,7 +362,7 @@
             <div class="rank-number" id="playRank">—</div>
             <div class="rank-caption" id="playRankCaption">—</div>
           </div>
-          <div class="rank-card personal">
+          <div class="rank-card personal" id="personalRankCard">
             <div class="rank-icon">★</div>
             <div class="label">好き度ランキング</div>
             <div class="rank-number" id="personalRank">—</div>
@@ -360,7 +392,7 @@
             <div class="rank-number" id="generationRank">—</div>
             <div class="rank-caption" id="generationRankCaption">—</div>
           </div>
-          <div class="rank-card">
+          <div class="rank-card" id="rankDiffCard">
             <div class="rank-icon">🚀</div>
             <div class="label">1週間前の順位からの上昇</div>
             <div class="rank-number" id="rankDiff">—</div>
@@ -392,8 +424,8 @@
         </div>
       </section>
 
-      <!-- 4. 視聴回数変遷グラフ（日付ギャップ対応） -->
-      <section class="section">
+      <!-- 視聴回数変遷グラフ（日付ギャップ対応） -->
+      <section class="section" id="playHistorySection">
         <div class="section-card">
           <div class="section-header-flex">
             <h2>Play Count History</h2>
@@ -413,7 +445,7 @@
       </section>
 
       <!-- 好き度ランキング変遷グラフ -->
-      <section class="section">
+      <section class="section" id="rankHistorySection">
         <div class="section-card">
           <div class="section-header-flex">
             <h2>好き度ランキング変遷</h2>
@@ -430,7 +462,7 @@
       </section>
 
       <!-- マイルストーン -->
-      <section class="section">
+      <section class="section" id="milestonesSection">
         <div class="section-card">
           <h2>Milestones</h2>
           <div class="milestone-section-title">視聴回数マイルストーン</div>
@@ -443,14 +475,14 @@
         </div>
       </section>
 
-      <section class="section">
+      <section class="section" id="recentHistorySection">
         <div class="section-card">
           <h2>Recent History</h2>
           <div id="historyTableWrap">Loading…</div>
         </div>
       </section>
 
-      <section class="section">
+      <section class="section" id="basicInfoSection">
         <div class="section-card">
           <h2>Basic Information</h2>
           <div class="meta-grid">
@@ -474,6 +506,7 @@
 
     let allSongs = {};
     let allHistoryDaily = {};
+    let allHistoryAnalytics = {};
     let playRankMap = {};
     let timeRankMap = {};
     let currentHistoryRows = [];
@@ -527,7 +560,6 @@
       return [];
     }
 
-    // ジャンルを確実に配列として正規化する関数
     function normalizeGenres(song) {
       if (Array.isArray(song.genres)) return song.genres.filter(Boolean);
       if (song.genre) {
@@ -545,31 +577,47 @@
       return { artist: title.slice(0, index), song: title.slice(index + 3) };
     }
 
-    // 全曲データから各種ランキングを算出
+    // アーティスト抽出ルールの厳密な実装
+    function extractArtists(title) {
+      const { artist: artistPart, song: songPart } = splitArtistTitle(title);
+      const artists = [];
+      if (artistPart) {
+        const splits = artistPart.split(/\s*,\s*|\s*&\s*|\s+x\s+/);
+        splits.forEach(a => {
+          const t = a.trim();
+          if (t) artists.push(t);
+        });
+      }
+      if (songPart) {
+        const remixMatch = songPart.match(/\(([^)]+)\s+[Rr]emix\)\s*$/);
+        if (remixMatch && remixMatch[1]) {
+          const remixer = remixMatch[1].trim();
+          if (remixer) artists.push(remixer);
+        }
+      }
+      return Array.from(new Set(artists));
+    }
+
     function calculateAllRanks(songs, dailyHistory) {
       const songList = Object.entries(songs || {}).map(([id, s]) => ({ id, ...s }));
 
-      // 1. Overall Play Rank (再生回数ベース)
       const playSorted = [...songList].sort((a, b) => Number(b.playCount || 0) - Number(a.playCount || 0));
       const playRanks = {};
       playSorted.forEach((s, idx) => { playRanks[s.id] = { rank: idx + 1, total: songList.length }; });
 
-      // 2. Overall Time Rank (視聴時間ベース)
       const timeSorted = [...songList].sort((a, b) => Number(b.totalWatchTime || 0) - Number(a.totalWatchTime || 0));
       const timeRanks = {};
       timeSorted.forEach((s, idx) => { timeRanks[s.id] = { rank: idx + 1, total: songList.length }; });
 
-      // 3. 直近1週間 / 1ヶ月の視聴回数増加順位
       const dates = Object.keys(dailyHistory || {}).sort();
       let weeklyRanks = {};
       let monthlyRanks = {};
-      let rankDiffs = {}; // 1週間前からのOverall順位変動
+      let rankDiffs = {};
 
       if (dates.length >= 2) {
         const latestDate = dates[dates.length - 1];
         const latestObj = dailyHistory[latestDate]?.songs || {};
 
-        // 1週間前 (7日前)、1ヶ月前 (30日前) の日付を探す
         const getBaselineDate = (daysAgo) => {
           const latestD = new Date(latestDate + "T00:00:00Z");
           const targetD = new Date(latestD.getTime() - daysAgo * 86400000);
@@ -585,7 +633,6 @@
         const wObj = dailyHistory[wDate]?.songs || {};
         const mObj = dailyHistory[mDate]?.songs || {};
 
-        // 1週間前全体の順位計算用
         const wBasePlaysMap = {};
         songList.forEach(s => {
           wBasePlaysMap[s.id] = wObj[s.id]?.playCount ?? 0;
@@ -594,7 +641,6 @@
         const wOverallRanks = {};
         wSortedForOverall.forEach((s, idx) => { wOverallRanks[s.id] = idx + 1; });
 
-        // 週次増加量ランキング
         const weeklyDiffs = songList.map(s => {
           const cur = latestObj[s.id]?.playCount ?? (s.playCount || 0);
           const base = wObj[s.id]?.playCount ?? 0;
@@ -602,7 +648,6 @@
         }).sort((a, b) => b.delta - a.delta);
         weeklyDiffs.forEach((item, idx) => { weeklyRanks[item.id] = idx + 1; });
 
-        // 月次増加量ランキング
         const monthlyDiffs = songList.map(s => {
           const cur = latestObj[s.id]?.playCount ?? (s.playCount || 0);
           const base = mObj[s.id]?.playCount ?? 0;
@@ -610,7 +655,6 @@
         }).sort((a, b) => b.delta - a.delta);
         monthlyDiffs.forEach((item, idx) => { monthlyRanks[item.id] = idx + 1; });
 
-        // 1週間前のOverall順位との差 (上昇幅 = 1週間前の順位 - 現在の順位。プラスなら上昇)
         songList.forEach(s => {
           const curR = playRanks[s.id]?.rank;
           const oldR = wOverallRanks[s.id];
@@ -622,7 +666,6 @@
         });
       }
 
-      // 4. 世代ごとの視聴回数順位
       const genGroups = {};
       songList.forEach(s => {
         const g = s.generation !== undefined && s.generation !== null ? s.generation : "未設定";
@@ -635,7 +678,6 @@
         group.forEach((s, idx) => { generationRanks[s.id] = { rank: idx + 1, total: group.length, generation: s.generation }; });
       });
 
-      // 5. リリース年ごとの順位
       const yearGroups = {};
       songList.forEach(s => {
         const y = s.year ? String(s.year) : "不明";
@@ -648,7 +690,6 @@
         group.forEach((s, idx) => { yearRanks[s.id] = { rank: idx + 1, total: group.length, year: s.year }; });
       });
 
-      // 6. ジャンル別 Play Rank (複数ジャンル対応)
       const genreSongMap = {};
       songList.forEach(s => {
         const genres = normalizeGenres(s);
@@ -742,9 +783,13 @@
         button.addEventListener("click", () => {
           const url = new URL(location.href);
           url.searchParams.set("id", item.id);
+          url.searchParams.delete("artist");
+          url.searchParams.delete("genre");
+          url.searchParams.delete("year");
           history.pushState({}, "", url);
           $("songSearch").value = "";
           renderSearchResults("");
+          switchView("song");
           loadSong(item.id);
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
@@ -754,12 +799,14 @@
     }
 
     async function loadAllData() {
-      const [songs, dailyHistory] = await Promise.all([
+      const [songs, dailyHistory, analyticsHistory] = await Promise.all([
         fetchJson("music_chart/songs"),
-        fetchJson("music_chart/daily_history")
+        fetchJson("music_chart/daily_history"),
+        fetchJson("music_chart/analytics_history")
       ]);
       allSongs = songs && typeof songs === "object" ? songs : {};
       allHistoryDaily = dailyHistory && typeof dailyHistory === "object" ? dailyHistory : {};
+      allHistoryAnalytics = analyticsHistory && typeof analyticsHistory === "object" ? analyticsHistory : {};
       
       const computedRanks = calculateAllRanks(allSongs, allHistoryDaily);
       playRankMap = computedRanks.playRanks;
@@ -773,7 +820,7 @@
       $("loading").classList.add("hidden");
       $("content").classList.add("hidden");
       $("error").classList.remove("hidden");
-      $("error").innerHTML = `<strong>Could not load this song</strong>${message}`;
+      $("error").innerHTML = `<strong>Could not load data</strong>${message}`;
       $("status").textContent = "Firebase read failed";
     }
 
@@ -787,7 +834,6 @@
       return response.json();
     }
 
-    // analytics_history と daily_history の統合
     function extractSongCombinedHistory(analyticsHistory, dailyHistory, songId) {
       const combinedMap = new Map();
 
@@ -846,7 +892,6 @@
       return formatDate(validRows[0].date);
     }
 
-    // 日付の抜けを補完するヘルパー (ランク・視聴回数共通ギャップ対応)
     function fillMissingDates(rows, valueKey) {
       if (!rows.length) return [];
       const dataMap = new Map(rows.map(r => [r.date, r]));
@@ -980,7 +1025,6 @@
       $("historyTableWrap").replaceChildren(table);
     }
 
-    // Chart.js: 視聴回数グラフ（日付ギャップ対応・spanGaps: falseでデータを繋がない）
     function renderPlayChart(rows) {
       if (playChartInstance) { playChartInstance.destroy(); playChartInstance = null; }
 
@@ -1005,7 +1049,7 @@
             pointHoverRadius: 6,
             fill: true,
             tension: 0.1,
-            spanGaps: false // データの無い日は繋がずにギャップを空ける
+            spanGaps: false
           }]
         },
         options: {
@@ -1044,7 +1088,6 @@
       });
     }
 
-    // Chart.js: 好き度ランキング変遷グラフ
     function renderRankChart(rows) {
       if (rankChartInstance) { rankChartInstance.destroy(); rankChartInstance = null; }
 
@@ -1285,7 +1328,6 @@
       $("playCount").textContent = formatNumber(song.playCount);
       $("watchTime").textContent = formatSeconds(song.totalWatchTime);
 
-      // 各種ランキング情報を反映
       const rCache = window.computedRanksCache || {};
       const playRank = rCache.playRanks?.[songId];
       const timeRank = rCache.timeRanks?.[songId];
@@ -1329,7 +1371,6 @@
       $("yearRank").textContent = yearRank ? `#${formatNumber(yearRank.rank)}` : "—";
       $("yearRankCaption").textContent = `${songYear}年リリース (全${yearRank?.total || 0}曲中)`;
 
-      // ジャンル別順位の表示（複数ジャンル対応）
       const genreContainer = $("genreRanksContainer");
       genreContainer.replaceChildren();
       if (Object.keys(genreRanks).length > 0) {
@@ -1348,7 +1389,6 @@
         genreContainer.textContent = "—";
       }
 
-      // 複数ジャンルタグの表示
       const genreTagsWrap = $("genreTagsWrap");
       genreTagsWrap.replaceChildren();
       genres.forEach(g => {
@@ -1420,37 +1460,98 @@
       }
     }
 
-    $("songSearch").addEventListener("input", (event) => renderSearchResults(event.target.value));
-    $("clearSearch").addEventListener("click", () => {
-      $("songSearch").value = "";
-      renderSearchResults("");
-      $("songSearch").focus();
-    });
+    // ==========================================
+    // 新規追加：3つの分野（アーティスト・ジャンル・リリース年）のロジック
+    // ==========================================
 
-    $("toggleMaBtn").addEventListener("click", () => {
-      showMovingAverage = !showMovingAverage;
-      $("toggleMaBtn").textContent = `移動平均線: ${showMovingAverage ? "ON" : "OFF"}`;
-      renderRankChart(currentHistoryRows);
-    });
+    function switchView(viewName) {
+      const tabs = document.querySelectorAll(".nav-tab");
+      tabs.forEach(t => {
+        if (t.dataset.view === viewName) t.classList.add("active");
+        else t.classList.remove("active");
+      });
 
-    $("resetPlayZoomBtn").addEventListener("click", () => {
-      if (playChartInstance) playChartInstance.resetZoom();
-    });
+      const content = $("content");
+      const listView = $("listViewContainer");
+      const searchPanel = $("searchPanelContainer");
 
-    $("resetRankZoomBtn").addEventListener("click", () => {
-      if (rankChartInstance) rankChartInstance.resetZoom();
-    });
-
-    window.addEventListener("popstate", () => loadSong());
-
-    (async () => {
-      try {
-        await loadAllData();
-      } catch (error) {
-        $("searchNote").textContent = "曲検索データを読み込めませんでした。";
+      if (viewName === "song") {
+        listView.classList.add("hidden");
+        content.classList.remove("hidden");
+        searchPanel.classList.remove("hidden");
+      } else {
+        content.classList.add("hidden");
+        searchPanel.classList.add("hidden");
+        listView.classList.remove("hidden");
+        
+        if (viewName === "artists") renderArtistsIndex();
+        else if (viewName === "genres") renderGenresIndex();
+        else if (viewName === "years") renderYearsIndex();
       }
-      await loadSong();
-    })();
-  </script>
-</body>
-</html>
+    }
+
+    // 1. アーティストページの実装
+    function renderArtistsIndex() {
+      const listView = $("listViewContainer");
+      listView.replaceChildren();
+
+      const artistMap = {};
+      for (const [sId, song] of Object.entries(allSongs)) {
+        const artists = extractArtists(song.title);
+        artists.forEach(artist => {
+          if (!artistMap[artist]) artistMap[artist] = [];
+          artistMap[artist].push({ id: sId, ...song });
+        });
+      }
+
+      const artistSummary = Object.entries(artistMap).map(([name, songs]) => {
+        let totalPlays = 0;
+        let totalWatchTime = 0;
+        let mostPopularSong = songs[0];
+        let maxPlays = -1;
+
+        songs.forEach(s => {
+          const plays = Number(s.playCount || 0);
+          totalPlays += plays;
+          totalWatchTime += Number(s.totalWatchTime || 0);
+          if (plays > maxPlays) {
+            maxPlays = plays;
+            mostPopularSong = s;
+          }
+        });
+
+        return {
+          name,
+          songCount: songs.length,
+          totalPlays,
+          totalWatchTime,
+          mostPopularSong,
+          songs
+        };
+      }).sort((a, b) => b.totalPlays - a.totalPlays);
+
+      const header = document.createElement("div");
+      header.className = "section-header-flex";
+      header.innerHTML = `<h2>アーティスト一覧 (全 ${artistSummary.length} 組)</h2>`;
+      listView.appendChild(header);
+
+      const grid = document.createElement("div");
+      grid.className = "grid-cards";
+
+      artistSummary.forEach(art => {
+        const card = document.createElement("div");
+        card.className = "card-item";
+        const ytId = art.mostPopularSong?.youtubeId;
+        const thumbUrl = ytId ? `https://img.youtube.com/vi/${encodeURIComponent(ytId)}/mqdefault.jpg` : "";
+
+        card.innerHTML = `
+          <img class="card-thumb" src="${thumbUrl}" alt="" loading="lazy" />
+          <div class="card-title">${escapeHtml(art.name)}</div>
+          <div class="card-sub">登録曲数: ${formatNumber(art.songCount)}曲 / 総再生: ${formatNumber(art.totalPlays)}回</div>
+        `;
+        card.addEventListener("click", () => {
+          renderArtistDetail(art);
+        });
+        grid.appendChild(card);
+      });
+      listView.appendChild(grid);
