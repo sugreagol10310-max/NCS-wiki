@@ -275,6 +275,9 @@ input[type=range]{width:min(600px,70vw)}
 
 <script>
 const DB="https://ncs-music-e2d05-default-rtdb.firebaseio.com";
+// 11月末までの暫定運用。Firebaseへ戻す場合は "firebase" に変更。
+const DATA_SOURCE="static";
+const STATIC_DATA_BASE="./data/music_chart";
 let songs={}, history={}, dates=[], mergedHistory={}, mergedDates=[];
 let raceTimer=null, currentDateIndex=0, raceFrame=null;
 
@@ -287,8 +290,20 @@ const addDays=(d,n)=>new Date(d.getTime()+n*86400000);
 const formatDateStr=d=>d.toISOString().split('T')[0];
 
 async function get(path){
-  const r=await fetch(DB+path+".json");
-  if(!r.ok)throw Error(`Firebase HTTP ${r.status}: ${path}`);
+  let url;
+  if(DATA_SOURCE==="static"){
+    const files={
+      "/music_chart/songs":`${STATIC_DATA_BASE}/songs.json`,
+      "/music_chart/daily_history":`${STATIC_DATA_BASE}/daily_history.json`,
+      "/music_chart/analytics_history":`${STATIC_DATA_BASE}/analytics_history.json`
+    };
+    url=files[path];
+    if(!url)throw Error(`No static snapshot is configured for ${path}`);
+  }else{
+    url=DB+path+".json";
+  }
+  const r=await fetch(url,{cache:DATA_SOURCE==="static"?"default":"no-store"});
+  if(!r.ok)throw Error(`${DATA_SOURCE==="static"?"Static JSON":"Firebase"} HTTP ${r.status}: ${url}`);
   return await r.json();
 }
 
@@ -1074,7 +1089,7 @@ function setupRace(){
 
 async function load(){
   stopRace();
-  $("message").className="loading";$("message").textContent="Firebaseからデータを読み込んでいます…";$("app").style.display="none";
+  $("message").className="loading";$("message").textContent=DATA_SOURCE==="static"?"保存済みデータを読み込んでいます…":"Firebaseからデータを読み込んでいます…";$("app").style.display="none";
   try{
     songs=await get("/music_chart/songs")||{};
     const rawDaily = await get("/music_chart/daily_history") || {};
