@@ -502,6 +502,12 @@
 
   <script>
     const FIREBASE_BASE = "https://ncs-music-e2d05-default-rtdb.firebaseio.com";
+
+    // 11月末までの暫定運用は "static"。
+    // Firebaseへ戻すときは "firebase" に変更する。
+    const DATA_SOURCE = "static";
+    const STATIC_DATA_BASE = "./data/music_chart";
+
     const DEFAULT_SONG_ID = "1785407081629";
 
     let allSongs = {};
@@ -825,11 +831,28 @@
     }
 
     async function fetchJson(path) {
-      const url = `${FIREBASE_BASE}/${path}.json`;
-      const response = await fetch(url, { cache: "no-store" });
+      let url;
+      let cacheMode;
+
+      if (DATA_SOURCE === "static") {
+        // Static snapshot files mirror the three RTDB nodes used by this page.
+        const staticFiles = {
+          "music_chart/songs": `${STATIC_DATA_BASE}/songs.json`,
+          "music_chart/daily_history": `${STATIC_DATA_BASE}/daily_history.json`,
+          "music_chart/analytics_history": `${STATIC_DATA_BASE}/analytics_history.json`
+        };
+        url = staticFiles[path];
+        if (!url) throw new Error(`No static snapshot is configured for ${path}`);
+        cacheMode = "default";
+      } else {
+        url = `${FIREBASE_BASE}/${path}.json`;
+        cacheMode = "no-store";
+      }
+
+      const response = await fetch(url, { cache: cacheMode });
       if (!response.ok) {
         if (response.status === 404) return null;
-        throw new Error(`HTTP ${response.status} while reading ${path}`);
+        throw new Error(`HTTP ${response.status} while reading ${url}`);
       }
       return response.json();
     }
@@ -1420,8 +1443,14 @@
       $("youtubeLink").href = yt;
       if (!song.youtubeId) $("youtubeLink").style.display = "none";
 
-      $("firebaseLink").href = `${FIREBASE_BASE}/music_chart/songs/${encodeURIComponent(songId)}.json`;
-      
+      if (DATA_SOURCE === "static") {
+        $("firebaseLink").href = `${STATIC_DATA_BASE}/songs.json`;
+        $("firebaseLink").textContent = "View static data";
+      } else {
+        $("firebaseLink").href = `${FIREBASE_BASE}/music_chart/songs/${encodeURIComponent(songId)}.json`;
+        $("firebaseLink").textContent = "View Firebase data";
+      }
+
       renderHistorySummary(historyRows);
       renderPlayChart(historyRows);
       renderRankChart(historyRows);
@@ -1431,7 +1460,7 @@
       $("loading").classList.add("hidden");
       $("error").classList.add("hidden");
       $("content").classList.remove("hidden");
-      $("status").textContent = `Live song data + ${historyRows.length} history snapshots`;
+      $("status").textContent = `${DATA_SOURCE === "static" ? "Static snapshot" : "Live Firebase data"} + ${historyRows.length} history snapshots`;
     }
 
     async function loadSong(forcedSongId = null) {
@@ -1455,7 +1484,7 @@
         renderSong(song, songId, historyRows);
       } catch (error) {
         showError(
-          `Firebase RTDBから楽曲データまたは履歴を取得できませんでした。<br>` +
+          `${DATA_SOURCE === "static" ? "静的JSON" : "Firebase RTDB"}から楽曲データまたは履歴を取得できませんでした。<br>` +
           `<small>${escapeHtml(error.message)}</small><br><br>` +
           `Song: <code>music_chart/songs/${escapeHtml(songId)}</code>`
         );
