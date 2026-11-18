@@ -1438,18 +1438,20 @@
       const params = new URLSearchParams(location.search);
       const songId = forcedSongId || params.get("id") || DEFAULT_SONG_ID;
       try {
+        // loadAllData() で取得済みのデータを再利用する。
+        // 曲を切り替えるたびに履歴全体を再ダウンロードしない。
         if (!Object.keys(allSongs).length) {
           await loadAllData();
         }
-        const [song, analyticsHistory, dailyHistory] = await Promise.all([
-          fetchJson(`music_chart/songs/${encodeURIComponent(songId)}`),
-          fetchJson("music_chart/analytics_history"),
-          fetchJson("music_chart/daily_history")
-        ]);
 
+        const song = allSongs[songId];
         if (!song || typeof song !== "object") throw new Error("No song data was returned.");
 
-        const historyRows = extractSongCombinedHistory(analyticsHistory, dailyHistory, songId);
+        const historyRows = extractSongCombinedHistory(
+          allHistoryAnalytics,
+          allHistoryDaily,
+          songId
+        );
         renderSong(song, songId, historyRows);
       } catch (error) {
         showError(
